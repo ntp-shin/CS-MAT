@@ -13,11 +13,6 @@ from torch_utils import misc
 from torch_utils import persistence
 from networks.basic_module import FullyConnectedLayer, Conv2dLayer, MappingNet, MinibatchStdLayer, DisFromRGB, DisBlock, StyleConv, ToRGB, get_style_code
 
-import cv2
-import torch
-from yolov5.models.common import DetectMultiBackend
-from yolov5.utils.general import Profile, check_img_size, non_max_suppression, scale_boxes
-from yolov5.utils.torch_utils import select_device
 
 @misc.profiled_function
 def nf(stage, channel_base=32768, channel_decay=1.0, channel_max=512):
@@ -706,21 +701,9 @@ class DecStyleBlock(nn.Module):
 class FirstStage(nn.Module):
     def __init__(self, img_channels, img_resolution=256, dim=180, w_dim=512, use_noise=False, demodulate=True, activation='lrelu'):
         super().__init__()
-
-        # >>> init yolov5 >>>
-        weights = '/media/nnthao/yolov5/runs/train/exp-mask/weights/best.pt'    # model path or triton URL
-        data = '/home/nnthao/project/yolov5/data/datamask.yaml' # dataset.yaml path
-        device = ','.join(str(i) for i in list(range(torch.cuda.device_count())))     # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        half=False  # use FP16 half-precision inference
-        dnn=False   # use OpenCV DNN for ONNX inference
-
-        device = select_device(device)
-        self.yolov5 = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
-        # <<< init yolov5 <<<
-
         res = 64
 
-        self.conv_first = Conv2dLayerPartial(in_channels=img_channels+1+1, out_channels=dim, kernel_size=3, activation=activation)
+        self.conv_first = Conv2dLayerPartial(in_channels=img_channels+1, out_channels=dim, kernel_size=3, activation=activation)
         self.enc_conv = nn.ModuleList()
         down_time = int(np.log2(img_resolution // res))
         for i in range(down_time):  # from input size to 64
@@ -768,68 +751,7 @@ class FirstStage(nn.Module):
             self.dec_conv.append(DecStyleBlock(res, dim, dim, activation, style_dim, use_noise, demodulate, img_channels))
 
     def forward(self, images_in, masks_in, ws, noise_mode='random'):
-        # images_in: shape[batch_size, 3, res, res], range[0, 1]
-        # masks_in [batch_size, 1, res, res], range[0, 1]
-        
-        # >>> infer yolo >>>
-        imgsz = (512, 512)  # inference size (height, width)
-        augment=False   # augmented inference
-        visualize=False # visualize features
-        conf_thres=0.25 # confidence threshold
-        iou_thres=0.45  # NMS IOU threshold
-        classes=None    # filter by class: --class 0, or --class 0 2 3
-        agnostic_nms=False  # class-agnostic NMS
-        max_det=18  # maximum detections per image
-        batch_size = images_in.shape[0]  # batch_size
-        box_color = (255, 255, 255)
-
-        # Run inference
-        imgsz = check_img_size(imgsz, s=self.yolov5.stride)  # check image size
-        self.yolov5.warmup(imgsz=(1 if self.yolov5.pt or self.yolov5.triton else batch_size, 3, *imgsz))  # warmup
-        dt = (Profile(), Profile(), Profile())
-
-        with dt[0]:
-            masked_images_in = (images_in * masks_in).half() if self.yolov5.fp16 else (images_in * masks_in).float()  # uint8 to fp16/32
-            if len(masked_images_in.shape) == 3:
-                masked_images_in = masked_images_in[None]  # expand for batch dim
-
-        # Inference
-        with dt[1]:
-            pred = self.yolov5(masked_images_in, augment=augment, visualize=visualize)
-
-        # NMS
-        with dt[2]:
-            pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-
-        # Coordinate det (x-min, y-min, x-max, y-max) to image-sized det (batch, 1, res, res)
-        dets_in = None
-
-        for i, det in enumerate(pred):  # per image
-            det_in = torch.zeros(512, 512, 3, dtype=torch.uint8).contiguous().cpu().detach().numpy()
-
-            if len(det):
-                # Rescale boxes from img_size to det_in size
-                det[:, :4] = scale_boxes(masked_images_in.shape[2:], det[:, :4], det_in.shape).round()
-
-                # Fill fully in boxes with white
-                for *xyxy, conf, cls in reversed(det):
-                    cv2.rectangle(det_in, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])), box_color, -1)
-
-            det_in = torch.from_numpy(det_in[..., 0].reshape(1, 1, 512, 512)).to(self.yolov5.device)
-            det_in = det_in.half() if self.yolov5.fp16 else det_in.float()  # uint8 to fp16/32
-            det_in /= 255  # 0 - 255 to 0.0 - 1.0
-
-            if i:
-                dets_in = torch.cat((dets_in, det_in))
-            else:
-                dets_in = det_in
-        # <<< infer yolo <<<
-        print(type(dets_in), dets_in.shape, dets_in.max())
-        print(type(masks_in), masks_in.shape, masks_in.max())
-        print(type(images_in), images_in.shape, images_in.max())
-        print(batch_size)
-
-        x = torch.cat([masks_in - 0.5, dets_in - 0.5, images_in * masks_in], dim=1)
+        x = torch.cat([masks_in - 0.5, images_in * masks_in], dim=1)
 
         skips = []
         x, mask = self.conv_first(x, masks_in)  # input size

@@ -42,11 +42,11 @@ For example, if you want to train a model on Places, run a bash script with
 ```shell
 python train.py \
     --outdir=output_path \
-    --gpus=8 \
-    --batch=32 \
+    --gpus=2 \
+    --batch=8 \
     --metrics=fid36k5_full \
-    --data=training_data_path \
-    --data_val=val_data_path \
+    --data=Data/CelebA-HQ/CelebA-HQ-img \
+    --data_val=Data/CelebA-HQ/CelebA-HQ-val_img \
     --dataloader=datasets.dataset_512.ImageFolderMaskDataset \
     --mirror=True \
     --cond=False \

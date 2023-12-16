@@ -1,0 +1,10 @@
+#!/bin/sh
+#SBATCH --time=5
+
+cd ~/project/FDA
+
+srun python generate_image.py \
+    --network /media/nnthao/MAT/pretrained/CelebA-HQ_512.pkl \
+    --dpath test_sets/CelebA-HQ/images \
+    --mpath test_sets/CelebA-HQ/masks \
+    --outdir test_sets/CelebA-HQ/samples
