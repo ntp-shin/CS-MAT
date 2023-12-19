@@ -129,8 +129,11 @@ class TwoStageLoss(Loss):
         # Dmain: Maximize logits for real images.
         # Dr1: Apply R1 regularization.
         if do_Dmain or do_Dr1:
+            print(phase, 'do_Dr1', do_Dr1)
+            print('real_img.shape', real_img.shape)
             name = 'Dreal_Dr1' if do_Dmain and do_Dr1 else 'Dreal' if do_Dmain else 'Dr1'
             with torch.autograd.profiler.record_function(name + '_forward'):
+                print()
                 real_img_tmp = real_img.detach().requires_grad_(do_Dr1)
                 mask_tmp = mask.detach().requires_grad_(do_Dr1)
                 real_img_tmp_stg1 = real_img.detach().requires_grad_(do_Dr1)

@@ -85,6 +85,7 @@ def save_image_grid(img, fname, drange, grid_size):
 
 #----------------------------------------------------------------------------
 
+from my_utils import *
 def training_loop(
     run_dir                 = '.',      # Output directory.
     training_set_kwargs     = {},       # Options for training set.
@@ -191,7 +192,8 @@ def training_loop(
     ddp_modules = dict()
     for name, module in [('G_mapping', G.mapping), ('G_synthesis', G.synthesis), ('D', D), (None, G_ema), ('augment_pipe', augment_pipe)]:
         if (num_gpus > 1) and (module is not None) and len(list(module.parameters())) != 0:
-            module.requires_grad_(True)
+            # module.requires_grad_(True)
+            trainable_except(module)
             module = torch.nn.parallel.DistributedDataParallel(module, device_ids=[device], broadcast_buffers=False)
             module.requires_grad_(False)
         if name is not None:
@@ -317,7 +319,8 @@ def training_loop(
             if phase.start_event is not None:
                 phase.start_event.record(torch.cuda.current_stream(device))
             phase.opt.zero_grad(set_to_none=True)
-            phase.module.requires_grad_(True)
+            # phase.module.requires_grad_(True)
+            trainable_except(phase.module)
 
             # Accumulate gradients over multiple rounds.
             for round_idx, (real_img, mask, real_c, gen_z, gen_c) in enumerate(zip(phase_real_img, phase_mask, phase_real_c, phase_gen_z, phase_gen_c)):
@@ -328,15 +331,23 @@ def training_loop(
             # Update weights.
             phase.module.requires_grad_(False)
             with torch.autograd.profiler.record_function(phase.name + '_opt'):
+                # print('b4 update weight')
+                # model_params_stats(phase.module, phase.name, False, 2)
                 for param in phase.module.parameters():
                     if param.grad is not None:
+                        print(torch.isnan(param.grad))
                         misc.nan_to_num(param.grad, nan=0, posinf=1e5, neginf=-1e5, out=param.grad)
                 phase.opt.step()
+                # print('af update weight')
+                # model_params_stats(phase.module, phase.name, False, 2)
             if phase.end_event is not None:
                 phase.end_event.record(torch.cuda.current_stream(device))
 
         # Update G_ema.
         with torch.autograd.profiler.record_function('Gema'):
+            # print('b4 update g_ema')
+            # for phase in phases:
+            #     model_params_stats(phase.module, phase.name, False, 2)
             ema_nimg = ema_kimg * 1000
             if ema_rampup is not None:
                 ema_nimg = min(ema_nimg, cur_nimg * ema_rampup)

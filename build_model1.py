@@ -3,6 +3,8 @@ from networks.mat import *
 from torchvision.io import read_image
 import time
 
+from my_utils import model_params_stats
+
 device = torch.device('cuda:0')
 batch = 8
 res = 512
@@ -16,30 +18,20 @@ initG_time = time.time() - initG_start_time
 
 D = Discriminator(c_dim=0, img_resolution=res, img_channels=img_channels).to(device)
 
-img = ((torch.cat((read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/images/test1.png')[None, ...], 
-       read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/images/test2.png')[None, ...]))) / 255).to(device)
-mask = ((torch.cat((read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/masks/mask1.png')[None, None, 0], 
-       read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/masks/mask2.png')[None, None, 0]))) / 255).to(device)
+# img = ((torch.cat((read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/images/test1.png')[None, ...], 
+#        read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/images/test2.png')[None, ...]))) / 255).to(device)
+# mask = ((torch.cat((read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/masks/mask1.png')[None, None, 0], 
+#        read_image('/home/nnthao/project/FDA/test_sets/CelebA-HQ/masks/mask2.png')[None, None, 0]))) / 255).to(device)
 
-# img = torch.randn(batch, 3, res, res).to(device)
-# mask = torch.randn(batch, 1, res, res).to(device)
+img = torch.randn(batch, 3, res, res).to(device)
+mask = torch.randn(batch, 1, res, res).to(device)
 
 # misc.print_module_summary(G, [img, mask, z_dim, c_dim])
-
-# ts = 0
-# nts = 0
-# for n, p in G.named_parameters():
-#     print(n, p.numel())
-#     if p.requires_grad:
-#         ts += p.numel()
-#     else:
-#         nts += p.numel()
-# print('sum', ts, nts)
-
-# exit()
-
-# img = (torch.arange(res**2).reshape(res, res)[None, None, ...] / (res**2 - 1)).to(device)
-# mask = torch.randn(batch, 1, res, res).to(device)
+print()
+model_params_stats(G, 'Generator', False, 1)
+print()
+model_params_stats(D, 'Discriminator', False, 1)
+print()
 
 z = torch.randn(batch, res).to(device)
 
@@ -60,6 +52,7 @@ genG_time = time.time() - genG_start_time
 print('output of G:', img.shape, img_stg1.shape)
 score, score_stg1 = D(img, mask, img_stg1, None)
 print('output of D:', score.shape, score_stg1.shape)
+
 print('initialized G time: ', initG_time)
 print('evaluating G time: ', evalG_time)
 print('generating G time: ', genG_time)

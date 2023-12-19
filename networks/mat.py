@@ -707,16 +707,16 @@ class FirstStage(nn.Module):
     def __init__(self, img_channels, img_resolution=256, dim=180, w_dim=512, use_noise=False, demodulate=True, activation='lrelu'):
         super().__init__()
 
-        # >>> init yolov5 >>>
+        # <<< init yolov5 >>>
         weights = '/media/nnthao/yolov5/runs/train/exp-mask/weights/best.pt'    # model path or triton URL
         data = '/home/nnthao/project/yolov5/data/datamask.yaml' # dataset.yaml path
-        device = ','.join(str(i) for i in list(range(torch.cuda.device_count())))     # cuda device, i.e. 0 or 0,1,2,3 or cpu
+        # device = ','.join(str(i) for i in list(range(torch.cuda.device_count())))     # cuda device, i.e. 0 or 0,1,2,3 or cpu
         half=False  # use FP16 half-precision inference
         dnn=False   # use OpenCV DNN for ONNX inference
 
-        device = select_device(device)
-        self.yolov5 = DetectMultiBackend(weights, device=device, dnn=dnn, data=data)
-        # <<< init yolov5 <<<
+        # device = select_device(device)
+        self.yolov5 = DetectMultiBackend(weights, dnn=dnn, data=data)
+        # <<< init yolov5 >>>
 
         res = 64
 
@@ -815,7 +815,7 @@ class FirstStage(nn.Module):
                 for *xyxy, conf, cls in reversed(det):
                     cv2.rectangle(det_in, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])), box_color, -1)
 
-            det_in = torch.from_numpy(det_in[..., 0].reshape(1, 1, 512, 512)).to(self.yolov5.device)
+            det_in = torch.from_numpy(det_in[..., 0].reshape(1, 1, 512, 512)).to(images_in.get_device())
             det_in = det_in.half() if self.yolov5.fp16 else det_in.float()  # uint8 to fp16/32
             det_in /= 255  # 0 - 255 to 0.0 - 1.0
 
@@ -824,10 +824,6 @@ class FirstStage(nn.Module):
             else:
                 dets_in = det_in
         # <<< infer yolo <<<
-        print(type(dets_in), dets_in.shape, dets_in.max())
-        print(type(masks_in), masks_in.shape, masks_in.max())
-        print(type(images_in), images_in.shape, images_in.max())
-        print(batch_size)
 
         x = torch.cat([masks_in - 0.5, dets_in - 0.5, images_in * masks_in], dim=1)
 

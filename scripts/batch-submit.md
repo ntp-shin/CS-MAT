@@ -5,5 +5,5 @@ sbatch -w gpu01 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=10GB -o std/gen-out -e 
 
 - train
 ```bash
-sbatch -w gpu01 --gpus=2 --cpus-per-gpu=32 --mem-per-gpu=20GB -o std/train-out -e std/train-err scripts/train-request.script
+sbatch -w gpu01 --gpus=2 --cpus-per-gpu=24 --mem-per-gpu=20GB -o std/train-out -e std/train-err scripts/train-request.script
 ```

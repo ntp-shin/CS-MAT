@@ -104,11 +104,11 @@ print('all running time: ', all_run_t)
 
 
 # Testing
-# import matplotlib.image as mpimg
-# import numpy as np
+import matplotlib.image as mpimg
+import numpy as np
 
-# for det_in in dets_in:
-#     mpimg.imsave('./imshow-ngu-vc.png', np.concatenate(((det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy(), 
-#                                                 (det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy(), 
-#                                                 (det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy()), axis=2).astype('uint8'))
-#     input()
+for det_in in dets_in:
+    mpimg.imsave('./imshow-ngu-vc.png', np.concatenate(((det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy(), 
+                                                (det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy(), 
+                                                (det_in.permute(1, 2, 0) * 255).floor().contiguous().cpu().detach().numpy()), axis=2).astype('uint8'))
+    input()
