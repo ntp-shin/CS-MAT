@@ -1,10 +1,20 @@
 #!/bin/sh
-#SBATCH --time=5
+#SBATCH -w gpu01 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=10GB -o std/gen-out -e std/gen-err --time=5
 
-cd ~/project/FDA
+cd ~/lntuong/FDA
 
 srun python generate_image.py \
-    --network /media/nnthao/MAT/pretrained/CelebA-HQ_512.pkl \
-    --dpath test_sets/CelebA-HQ/images \
-    --mpath test_sets/CelebA-HQ/masks \
-    --outdir test_sets/CelebA-HQ/samples
+    --network /media/nnthao/MAT/saved_model/00011-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl \
+    --dpath test_sets/CelebA-HQ/images3 \
+    --mpath test_sets/CelebA-HQ/masks3 \
+    --outdir test_sets/CelebA-HQ/samples32
+
+    # --network /media/nnthao/MAT/saved_model/00111-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl \
+    # --dpath test_sets/CelebA-HQ/images3 \
+    # --mpath test_sets/CelebA-HQ/masks3 \
+    # --outdir test_sets/CelebA-HQ/samples3
+
+    # --network /media/nnthao/MAT/pretrained/CelebA-HQ_512.pkl \
+    # --dpath test_sets/CelebA-HQ/images \
+    # --mpath test_sets/CelebA-HQ/masks \
+    # --outdir test_sets/CelebA-HQ/samples

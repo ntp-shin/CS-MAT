@@ -1,15 +1,16 @@
 #!/bin/sh
-#SBATCH --time=24:00:00
+#SBATCH -w gpu01 --gpus=2 --cpus-per-gpu=24 --mem-per-gpu=20GB -o std/train-out -e std/train-err --time=48:00:00
 
-cd ~/project/FDA
+cd ~/lntuong/FDA
 
 srun python -W ignore train.py \
     --outdir=/media/nnthao/MAT/saved_model \
     --gpus=2 \
-    --snap=50 \
+    --snap=25 \
     --batch=16 \
-    --kimg=25000 \
+    --kimg=600 \
     --metrics=fid2993_full \
+    --resume=/media/nnthao/MAT/saved_model/00103-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000600.pkl \
     --data=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img \
     --data_val=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img \
     --dataloader=datasets.dataset_512.ImageFolderMaskDataset \

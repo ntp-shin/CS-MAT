@@ -148,7 +148,13 @@ def params_and_buffers(module):
 
 def named_params_and_buffers(module):
     assert isinstance(module, torch.nn.Module)
-    return list(module.named_parameters()) + list(module.named_buffers())
+
+    named_buff_lst = []
+    for n, b in module.named_buffers():
+        if 'yolo_net' not in n:
+            named_buff_lst.append((n, b))
+
+    return list(module.named_parameters()) + named_buff_lst
 
 def copy_params_and_buffers(src_module, dst_module, require_all=False):
     assert isinstance(src_module, torch.nn.Module)

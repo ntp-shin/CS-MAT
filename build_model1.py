@@ -3,7 +3,7 @@ from networks.mat import *
 from torchvision.io import read_image
 import time
 
-from my_utils import model_params_stats
+from _my_utils import *
 
 device = torch.device('cuda:0')
 batch = 8
@@ -26,11 +26,11 @@ D = Discriminator(c_dim=0, img_resolution=res, img_channels=img_channels).to(dev
 img = torch.randn(batch, 3, res, res).to(device)
 mask = torch.randn(batch, 1, res, res).to(device)
 
-# misc.print_module_summary(G, [img, mask, z_dim, c_dim])
+misc.print_module_summary(G, [img, mask, z_dim, c_dim])
 print()
-model_params_stats(G, 'Generator', False, 1)
+print_model_tensors_stats(G, 'Generator', False, 1)
 print()
-model_params_stats(D, 'Discriminator', False, 1)
+print_model_tensors_stats(D, 'Discriminator', False, 1)
 print()
 
 z = torch.randn(batch, res).to(device)
