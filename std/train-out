@@ -1,0 +1,14 @@
+{"results": {"fid2993_full": 195.43875166090172}, "metric": "fid2993_full", "total_time": 87.89256811141968, "total_time_str": "1m 28s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000000.pkl", "timestamp": 1704872385.498345}
+tick 1     kimg 4.0      time 11m 18s      sec/tick 512.4   sec/kimg 128.11  maintenance 105.7  cpumem 6.92   gpumem 31.41  augment 0.000
+tick 2     kimg 8.0      time 19m 49s      sec/tick 511.6   sec/kimg 127.90  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 3     kimg 12.0     time 28m 21s      sec/tick 511.2   sec/kimg 127.80  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 4     kimg 16.0     time 36m 52s      sec/tick 511.3   sec/kimg 127.81  maintenance 0.3    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 5     kimg 20.0     time 45m 24s      sec/tick 511.2   sec/kimg 127.80  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 6     kimg 24.0     time 53m 55s      sec/tick 510.9   sec/kimg 127.73  maintenance 0.2    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 7     kimg 28.0     time 1h 02m 26s   sec/tick 511.1   sec/kimg 127.78  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 8     kimg 32.0     time 1h 10m 57s   sec/tick 511.0   sec/kimg 127.76  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 9     kimg 36.0     time 1h 19m 28s   sec/tick 510.7   sec/kimg 127.66  maintenance 0.3    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 10    kimg 40.0     time 1h 27m 59s   sec/tick 511.2   sec/kimg 127.80  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 11    kimg 44.0     time 1h 36m 30s   sec/tick 510.9   sec/kimg 127.73  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 12    kimg 48.0     time 1h 45m 02s   sec/tick 511.4   sec/kimg 127.86  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 13    kimg 52.0     time 1h 53m 33s   sec/tick 511.3   sec/kimg 127.83  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000

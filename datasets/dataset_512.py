@@ -16,6 +16,9 @@ import torch
 import dnnlib
 import random
 
+from PIL import Image
+import torchvision.transforms as transforms
+
 try:
     import pyspng
 except ImportError:
@@ -69,6 +72,9 @@ class Dataset(torch.utils.data.Dataset):
         pass
 
     def _load_raw_image(self, raw_idx): # to be overridden by subclass
+        raise NotImplementedError
+    
+    def _load_yolo_label(self, raw_idx): # to be overridden by subclass
         raise NotImplementedError
 
     def _load_raw_labels(self): # to be overridden by subclass
@@ -214,6 +220,37 @@ class ImageFolderMaskDataset(Dataset):
 
     def __getstate__(self):
         return dict(super().__getstate__(), _zipfile=None)
+    
+    def _load_yolo_label(self, raw_idx):
+        folder_yolo = '/media/nnthao/MAT/label_yolo/CelebA-HQ/CelebA-HQ-img'
+        fname = self._image_fnames[raw_idx]
+        fname = os.path.join(folder_yolo, fname.replace('.jpg', '.txt'))
+
+        image = self._load_raw_image(raw_idx)
+
+        channel = np.zeros((image.shape[1], image.shape[2], 1), dtype=np.uint8)
+
+        if not os.path.exists(fname):
+            fname = fname.replace('CelebA-HQ-img', 'CelebA-HQ-val_img')
+        
+        try:
+            with open(fname, 'r') as f:
+                for line in f.readlines():
+                    line = line.strip().split(' ')
+                    if len(line) == 5:
+                        x_center = float(line[1]) * image.shape[2]
+                        y_center = float(line[2]) * image.shape[1]
+                        width_box = float(line[3]) * image.shape[2]
+                        height_box = float(line[4]) * image.shape[1]
+                        x1 = int(x_center - width_box / 2)
+                        y1 = int(y_center - height_box / 2)
+                        x2 = int(x_center + width_box / 2)
+                        y2 = int(y_center + height_box / 2)
+                        channel[y1:y2, x1:x2, :] = 255
+        except:
+            print ('Cannot open file: ', fname)
+
+        return channel # HWC
 
     def _load_raw_image(self, raw_idx):
         fname = self._image_fnames[raw_idx]
@@ -243,8 +280,7 @@ class ImageFolderMaskDataset(Dataset):
         w = random.randint(0, W - res)
         image = image[h:h+res, w:w+res, :]
 
-        image = np.ascontiguousarray(image.transpose(2, 0, 1)) # HWC => CHW
-
+        image = np.ascontiguousarray(image.transpose(2, 0, 1)) # HWC => CHW 
         return image
 
     def _load_raw_labels(self):
@@ -263,6 +299,23 @@ class ImageFolderMaskDataset(Dataset):
 
     def __getitem__(self, idx):
         image = self._load_raw_image(self._raw_idx[idx])
+        channel = self._load_yolo_label(self._raw_idx[idx])
+        channel = channel.reshape((1, channel.shape[0], channel.shape[1]))
+        # print(channel.shape)
+
+        # tensor  = torch.from_numpy(channel)
+        # tensor = tensor.reshape((1, channel.shape[0], channel.shape[1]))
+        # image_channel = transforms.ToPILImage()(tensor)     
+        # print(tensor.shape)
+        
+        # folder_yolo = '/media/nnthao/MAT/test'
+        # if not os.path.exists(folder_yolo):
+            # os.makedirs(folder_yolo)
+
+        # fname = self._image_fnames[self._raw_idx[idx]]
+        # fname = os.path.join(folder_yolo, fname.replace('.jpg', '.png'))
+        # image_channel.save(fname)
+
 
         assert isinstance(image, np.ndarray)
         assert list(image.shape) == self.image_shape
@@ -270,13 +323,14 @@ class ImageFolderMaskDataset(Dataset):
         if self._xflip[idx]:
             assert image.ndim == 3 # CHW
             image = image[:, :, ::-1]
+            channel = channel[:, :, ::-1]
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
         return image.copy(), mask, self.get_label(idx)
 
 
 if __name__ == '__main__':
     res = 512
-    dpath = '/data/liwenbo/datasets/Places365/standard/val_large'
+    dpath = '/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img'
     D = ImageFolderMaskDataset(path=dpath)
     print(D.__len__())
     for i in range(D.__len__()):

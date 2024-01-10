@@ -108,6 +108,45 @@ class Conv2dLayerPartial(nn.Module):
 
 
 @persistence.persistent_class
+class Conv2dLayerYolo(nn.Module):
+    def __init__(self,
+                 in_channels,                    # Number of input channels.
+                 out_channels,                   # Number of output channels.
+                 kernel_size,                    # Width and height of the convolution kernel.
+                 bias            = True,         # Apply additive bias before the activation function?
+                 activation      = 'linear',     # Activation function: 'relu', 'lrelu', etc.
+                 up              = 1,            # Integer upsampling factor.
+                 down            = 1,            # Integer downsampling factor.
+                 resample_filter = [1,3,3,1],    # Low-pass filter to apply when resampling activations.
+                 conv_clamp      = None,         # Clamp the output to +-X, None = disable clamping.
+                 trainable       = True,         # Update the weights of this layer during training?
+                 ):
+        super().__init__()
+        self.conv = Conv2dLayer(in_channels, out_channels, kernel_size, bias, activation, up, down, resample_filter,
+                                conv_clamp, trainable)
+
+        self.weight_maskUpdater = torch.ones(1, 1, kernel_size, kernel_size)
+        self.slide_winsize = kernel_size ** 2
+        self.stride = down
+        self.padding = kernel_size // 2 if kernel_size % 2 == 1 else 0
+
+    def forward(self, x, mask=None):
+        if mask is not None:
+            with torch.no_grad():
+                if self.weight_maskUpdater.type() != x.type():
+                    self.weight_maskUpdater = self.weight_maskUpdater.to(x)
+                update_mask = F.conv2d(mask, self.weight_maskUpdater, bias=None, stride=self.stride, padding=self.padding)
+                mask_ratio = self.slide_winsize / (update_mask + 1e-8)
+                update_mask = torch.clamp(update_mask, 0, 1)  # 0 or 1
+                mask_ratio = torch.mul(mask_ratio, update_mask)
+            x = self.conv(x)
+            x = torch.mul(x, mask_ratio)
+            return x, update_mask
+        else:
+            x = self.conv(x)
+            return x, None
+
+@persistence.persistent_class
 class WindowAttention(nn.Module):
     r""" Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
