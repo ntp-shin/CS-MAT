@@ -126,10 +126,8 @@ def setup_training_loop_kwargs(
         dataloader = 'datasets.dataset_512.ImageFolderMaskDataset'
 
     args.training_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data,
-                                               det_path='/media/nnthao/MAT/label_yolo/CelebA-HQ/CelebA-HQ-img/',
                                                use_labels=True, max_size=None, xflip=False)
     args.val_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data_val,
-                                          det_path='/media/nnthao/MAT/label_yolo/CelebA-HQ/CelebA-HQ-val_img/',
                                           use_labels=True, max_size=None, xflip=False)
     args.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, num_workers=3, prefetch_factor=2)
 
