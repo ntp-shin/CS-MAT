@@ -17,7 +17,7 @@ import cv2
 import torch
 from yolov5.models.common import DetectMultiBackend
 from yolov5.utils.general import Profile, check_img_size, non_max_suppression, scale_boxes
-from yolov5.utils.torch_utils import select_device
+# from yolov5.utils.torch_utils import select_device
 
 @misc.profiled_function
 def nf(stage, channel_base=32768, channel_decay=1.0, channel_max=512):
@@ -711,7 +711,7 @@ class FirstStage(nn.Module):
         weights = '/media/nnthao/yolov5/runs/train/exp-mask/weights/best.pt'    # model path or triton URL
         data = '/home/nnthao/project/yolov5/data/datamask.yaml' # dataset.yaml path
         # device = ','.join(str(i) for i in list(range(torch.cuda.device_count())))     # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        half=False  # use FP16 half-precision inference
+        # half=False  # use FP16 half-precision inference
         dnn=False   # use OpenCV DNN for ONNX inference
 
         # device = select_device(device)
@@ -785,7 +785,7 @@ class FirstStage(nn.Module):
 
         # Run inference
         imgsz = check_img_size(imgsz, s=self.yolov5.stride)  # check image size
-        self.yolov5.warmup(imgsz=(1 if self.yolov5.pt or self.yolov5.triton else batch_size, 3, *imgsz))  # warmup
+        # self.yolov5.warmup(imgsz=(1 if self.yolov5.pt or self.yolov5.triton else batch_size, 3, *imgsz))  # warmup
         dt = (Profile(), Profile(), Profile())
 
         with dt[0]:
@@ -825,7 +825,7 @@ class FirstStage(nn.Module):
                 dets_in = det_in
         # <<< infer yolo <<<
 
-        x = torch.cat([masks_in - 0.5, dets_in - 0.5, images_in * masks_in], dim=1)
+        x = torch.cat([masks_in - 0.5, images_in * masks_in, dets_in - 0.5], dim=1)
 
         skips = []
         x, mask = self.conv_first(x, masks_in)  # input size

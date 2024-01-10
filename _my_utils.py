@@ -68,7 +68,7 @@ def print_model_tensors_stats(model, named_model, detail=False, num_gpus=0):
 
         print(f'- cuda{i}\t{buff_ts_per_dvs[i]}')
 
-def trainable_except(model, except_name='yolo_net'):
+def trainable_except(model, except_name='yolov5'):
     for n, p in model.named_parameters():
         if except_name in n:
             p.requires_grad = False
@@ -87,13 +87,13 @@ def check_tensors_model_change(pre_named_params, pos_named_params, pre_named_buf
     change = False
 
     for (n, pre_p), (_, pos_p) in zip(pre_named_params, pos_named_params):
-        if (pre_p.detach() != pos_p.detach()).sum() and 'yolo_net' not in n:
+        if (pre_p.detach() != pos_p.detach()).sum() and 'yolov5' not in n:
             change = True
             if see_changed_modules:
                 print(n)
     
     for (buff_n, pre_b), (_, pos_b) in zip(pre_named_buff, pos_named_buff):
-        if (pre_b.detach() != pos_b.detach()).sum() and 'yolo_net' not in buff_n:
+        if (pre_b.detach() != pos_b.detach()).sum() and 'yolov5' not in buff_n:
             change = True
             if see_changed_modules:
                 print(buff_n)
