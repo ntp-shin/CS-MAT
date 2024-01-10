@@ -39,7 +39,7 @@ class TwoStageLoss(Loss):
         self.pcp = PerceptualLoss(layer_weights=dict(conv4_4=1/4, conv5_4=1/2)).to(device)
         self.pcp_ratio = pcp_ratio
 
-    def run_G(self, img_in, mask_in, z, c, sync):
+    def run_G(self, img_in, mask_in, det_in, z, c, sync):
         with misc.ddp_sync(self.G_mapping, sync):
             ws = self.G_mapping(z, c, truncation_psi=self.truncation_psi)
             if self.style_mixing_prob > 0:
@@ -48,7 +48,7 @@ class TwoStageLoss(Loss):
                     cutoff = torch.where(torch.rand([], device=ws.device) < self.style_mixing_prob, cutoff, torch.full_like(cutoff, ws.shape[1]))
                     ws[:, cutoff:] = self.G_mapping(torch.randn_like(z), c, truncation_psi=self.truncation_psi, skip_w_avg_update=True)[:, cutoff:]
         with misc.ddp_sync(self.G_synthesis, sync):
-            img, img_stg1 = self.G_synthesis(img_in, mask_in, ws, return_stg1=True)
+            img, img_stg1 = self.G_synthesis(img_in, mask_in, det_in, ws, return_stg1=True)
         return img, ws, img_stg1
 
     def run_D(self, img, mask, img_stg1, c, sync):
@@ -62,7 +62,7 @@ class TwoStageLoss(Loss):
             logits, logits_stg1 = self.D(img, mask, img_stg1, c)
         return logits, logits_stg1
 
-    def accumulate_gradients(self, phase, real_img, mask, real_c, gen_z, gen_c, sync, gain):
+    def accumulate_gradients(self, phase, real_img, mask, det, real_c, gen_z, gen_c, sync, gain):
         assert phase in ['Gmain', 'Greg', 'Gboth', 'Dmain', 'Dreg', 'Dboth']
         do_Gmain = (phase in ['Gmain', 'Gboth'])
         do_Dmain = (phase in ['Dmain', 'Dboth'])
@@ -72,7 +72,7 @@ class TwoStageLoss(Loss):
         # Gmain: Maximize logits for generated images.
         if do_Gmain:
             with torch.autograd.profiler.record_function('Gmain_forward'):
-                gen_img, _gen_ws, gen_img_stg1 = self.run_G(real_img, mask, gen_z, gen_c, sync=(sync and not do_Gpl)) # May get synced by Gpl.
+                gen_img, _gen_ws, gen_img_stg1 = self.run_G(real_img, mask, det, gen_z, gen_c, sync=(sync and not do_Gpl)) # May get synced by Gpl.
                 gen_logits, gen_logits_stg1 = self.run_D(gen_img, mask, gen_img_stg1, gen_c, sync=False)
                 training_stats.report('Loss/scores/fake', gen_logits)
                 training_stats.report('Loss/signs/fake', gen_logits.sign())
@@ -114,7 +114,7 @@ class TwoStageLoss(Loss):
         loss_Dgen_stg1 = 0
         if do_Dmain:
             with torch.autograd.profiler.record_function('Dgen_forward'):
-                gen_img, _gen_ws, gen_img_stg1 = self.run_G(real_img, mask, gen_z, gen_c, sync=False)
+                gen_img, _gen_ws, gen_img_stg1 = self.run_G(real_img, mask, det, gen_z, gen_c, sync=False)
                 gen_logits, gen_logits_stg1 = self.run_D(gen_img, mask, gen_img_stg1, gen_c, sync=False) # Gets synced by loss_Dreal.
                 training_stats.report('Loss/scores/fake', gen_logits)
                 training_stats.report('Loss/signs/fake', gen_logits.sign())

@@ -1,5 +1,5 @@
 import torch
-from networks.mat import *
+from networks.idea1_class_mat import *
 from torchvision.io import read_image
 import time
 

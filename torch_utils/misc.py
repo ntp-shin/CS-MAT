@@ -151,7 +151,7 @@ def named_params_and_buffers(module):
 
     named_buff_lst = []
     for n, b in module.named_buffers():
-        if 'yolo_net' not in n:
+        if 'yolov5' not in n:
             named_buff_lst.append((n, b))
 
     return list(module.named_parameters()) + named_buff_lst

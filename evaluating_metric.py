@@ -3,9 +3,17 @@ import legacy
 import torch
 from metrics import metric_main
 
+# network_pkl = '/media/nnthao/MAT/saved_model/00011-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl'
+
 # network_pkl = '/media/nnthao/MAT/saved_model/00103-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000600.pkl'
 # network_pkl = '/media/nnthao/MAT/saved_model/00111-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl'
-network_pkl = '/media/nnthao/MAT/saved_model/00011-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl'
+
+# network_pkl = '/media/nnthao/MAT/saved_model/00118-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000120.pkl'
+network_pkl = '/media/nnthao/MAT/saved_model/00118-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000200.pkl'
+
+# network_pkl = '/media/nnthao/MAT/old_model/00000-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000000.pkl'
+# network_pkl = '/media/nnthao/MAT/old_model/00000-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000040.pkl'
+
 device = torch.device('cuda:0')
 metrics = ['fid2993_full']
 rank = 0

@@ -29,7 +29,6 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(self,
         name,                   # Name of the dataset.
         raw_shape,              # Shape of the raw image data (NCHW).
-        det_channels,
         max_size    = None,     # Artificially limit the size of the dataset. None = no limit. Applied before xflip.
         use_labels  = False,    # Enable conditioning labels? False = label dimension is zero.
         xflip       = False,    # Artificially double the size of the dataset via x-flips. Applied after max_size.
@@ -37,7 +36,6 @@ class Dataset(torch.utils.data.Dataset):
     ):
         self._name = name
         self._raw_shape = list(raw_shape)
-        self._det_channels = det_channels
         self._use_labels = use_labels
         self._raw_labels = None
         self._label_shape = None
@@ -71,9 +69,6 @@ class Dataset(torch.utils.data.Dataset):
         pass
 
     def _load_raw_image(self, raw_idx): # to be overridden by subclass
-        raise NotImplementedError
-
-    def _load_raw_det(self): # to be overridden by subclass
         raise NotImplementedError
 
     def _load_raw_labels(self): # to be overridden by subclass
@@ -125,10 +120,6 @@ class Dataset(torch.utils.data.Dataset):
         return list(self._raw_shape[1:])
 
     @property
-    def det_shape(self):
-        return [self._det_channels] + list(self._raw_shape[2:])
-
-    @property
     def num_channels(self):
         assert len(self.image_shape) == 3 # CHW
         return self.image_shape[0]
@@ -165,34 +156,24 @@ class Dataset(torch.utils.data.Dataset):
 
 #----------------------------------------------------------------------------
 
-# from networks.mat import YoloNet
-
-# Use class YoloNet (global)
-# device = torch.device('cuda:0')
-# yolov5 = YoloNet(512).to(device)
 
 class ImageFolderMaskDataset(Dataset):
     def __init__(self,
         path,                   # Path to directory or zip.
-        det_path,
-        det_channels=1,
         resolution      = None, # Ensure specific resolution, None = highest available.
         hole_range=[0,1],
         **super_kwargs,         # Additional arguments for the Dataset base class.
     ):
         self._path = path
-        self._det_path = det_path
         self._zipfile = None
         self._hole_range = hole_range
-        self._det_extension = {'', '.txt'}
 
-        if os.path.isdir(self._path) and os.path.isdir(self._det_path):
+        if os.path.isdir(self._path):
             self._type = 'dir'
             self._all_fnames = {os.path.relpath(os.path.join(root, fname), start=self._path) for root, _dirs, files in os.walk(self._path) for fname in files}
-            self._all_det_fnames = {os.path.relpath(os.path.join(root, fname), start=self._det_path) for root, _dirs, files in os.walk(self._det_path) for fname in files}
-        elif self._file_ext(self._path) == '.zip' and self._file_ext(self._det_path) == '.zip':
+        elif self._file_ext(self._path) == '.zip':
             self._type = 'zip'
-            self._all_fnames, self._all_det_fnames = set(self._get_zipfile().namelist())
+            self._all_fnames = set(self._get_zipfile().namelist())
         else:
             raise IOError('Path must point to a directory or zip')
 
@@ -201,23 +182,11 @@ class ImageFolderMaskDataset(Dataset):
         if len(self._image_fnames) == 0:
             raise IOError('No image files found in the specified path')
 
-        self._det_fnames = sorted(fname for fname in self._all_det_fnames if self._file_ext(fname) in self._det_extension)
-        if len(self._det_fnames) == 0:
-            raise IOError('No detection files found in the specified path')
-
         name = os.path.splitext(os.path.basename(self._path))[0]
         raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0).shape)
         if resolution is not None and (raw_shape[2] != resolution or raw_shape[3] != resolution):
             raise IOError('Image files do not match the specified resolution')
-        super().__init__(name=name, raw_shape=raw_shape, det_channels=det_channels, **super_kwargs)
-
-        # Use torch.hub.load
-        # self.model_path = '/media/nnthao/ntp/model/yolo_model.pt'
-        # self.yolo = torch.hub.load('ultralytics/yolov5', 'custom', path=self.model_path, force_reload=True)
-
-        # Use class YoloNet (local)
-        # self.device = torch.device('cuda:0')
-        # self.yolo = YoloNet(512).to(self.device)
+        super().__init__(name=name, raw_shape=raw_shape, **super_kwargs)
 
     @staticmethod
     def _file_ext(fname):
@@ -226,7 +195,7 @@ class ImageFolderMaskDataset(Dataset):
     def _get_zipfile(self):
         assert self._type == 'zip'
         if self._zipfile is None:
-            self._zipfile = zipfile.ZipFile(self._path), zipfile.ZipFile(self._det_path)
+            self._zipfile = zipfile.ZipFile(self._path)
         return self._zipfile
 
     def _open_file(self, fname):
@@ -278,29 +247,6 @@ class ImageFolderMaskDataset(Dataset):
 
         return image
 
-    def _load_raw_det(self, raw_idx):
-        fname = self._det_fnames[raw_idx]
-        det = np.zeros((1, self.image_shape[1], self.image_shape[2]), dtype=np.float32)
-
-        with open(self._det_path + fname) as f:
-            for line in f.readlines():
-                line = line.strip().split(' ')
-
-                if len(line) == 5:
-                    x_center = float(line[1]) * self.image_shape[2]
-                    y_center = float(line[2]) * self.image_shape[1]
-                    width_box = float(line[3]) * self.image_shape[2]
-                    height_box = float(line[4]) * self.image_shape[1]
-
-                    x1 = np.floor(x_center - width_box / 2).astype(int)
-                    y1 = np.floor(y_center - height_box / 2).astype(int)
-                    x2 = np.floor(x_center + width_box / 2).astype(int)
-                    y2 = np.floor(y_center + height_box / 2).astype(int)
-
-                    det[:, y1:y2, x1:x2] = 1
-
-        return det
-
     def _load_raw_labels(self):
         fname = 'labels.json'
         if fname not in self._all_fnames:
@@ -317,39 +263,15 @@ class ImageFolderMaskDataset(Dataset):
 
     def __getitem__(self, idx):
         image = self._load_raw_image(self._raw_idx[idx])
-        det = self._load_raw_det(self._raw_idx[idx])
 
-        # Use torch.hub.load
-        # results = self.yolo(image.transpose(1, 2, 0))
-        # det = np.zeros((image.shape[1], image.shape[2], 1), dtype=np.uint8)
-
-        # for result in results.xyxy[0]:
-        #     if result[4] > 0.5:
-        #         det[int(result[1]):int(result[3]), int(result[0]):int(result[2]), :] = 255
-
-        # det = det.transpose(1, image.shape[1], image.shape[2])
-
-
-        # Default: Zeros
-        # det = np.zeros((1, image.shape[1], image.shape[2]), dtype=np.uint8)
-
-        assert isinstance(image, np.ndarray) and isinstance(det, np.ndarray)
-        assert list(image.shape) == self.image_shape and list(det.shape) == self.det_shape
-        assert image.dtype == np.uint8 and det.dtype == np.float32
+        assert isinstance(image, np.ndarray)
+        assert list(image.shape) == self.image_shape
+        assert image.dtype == np.uint8
         if self._xflip[idx]:
-            assert image.ndim == 3 and det.ndim == 3 # CHW
+            assert image.ndim == 3 # CHW
             image = image[:, :, ::-1]
-            det = det[:, :, ::-1]
-
-        # Use class YoloNet (local)
-        # det = (self.yolo(torch.from_numpy(image[np.newaxis]).to(self.device) / 255)[0].cpu().detach().numpy())
-
-        # Use class YoloNet (global)
-        # global device, yolov5
-        # det = (yolov5(torch.from_numpy(image[np.newaxis]).to(device) / 255)[0].cpu().detach().numpy())
-
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
-        return image.copy(), mask, self.get_label(idx), det.copy()
+        return image.copy(), mask, self.get_label(idx)
 
 
 if __name__ == '__main__':
