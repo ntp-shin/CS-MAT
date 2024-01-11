@@ -12,3 +12,52 @@ tick 10    kimg 40.0     time 1h 27m 59s   sec/tick 511.2   sec/kimg 127.80  mai
 tick 11    kimg 44.0     time 1h 36m 30s   sec/tick 510.9   sec/kimg 127.73  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
 tick 12    kimg 48.0     time 1h 45m 02s   sec/tick 511.4   sec/kimg 127.86  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
 tick 13    kimg 52.0     time 1h 53m 33s   sec/tick 511.3   sec/kimg 127.83  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 14    kimg 56.0     time 2h 02m 04s   sec/tick 510.9   sec/kimg 127.73  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 15    kimg 60.0     time 2h 10m 36s   sec/tick 511.5   sec/kimg 127.88  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 16    kimg 64.0     time 2h 19m 08s   sec/tick 511.4   sec/kimg 127.85  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 17    kimg 68.0     time 2h 27m 38s   sec/tick 510.7   sec/kimg 127.67  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 18    kimg 72.0     time 2h 36m 10s   sec/tick 511.2   sec/kimg 127.80  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 19    kimg 76.0     time 2h 44m 40s   sec/tick 510.7   sec/kimg 127.68  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+tick 20    kimg 80.0     time 2h 53m 12s   sec/tick 511.1   sec/kimg 127.79  maintenance 0.1    cpumem 6.92   gpumem 31.41  augment 0.000
+Evaluating metrics...
+Traceback (most recent call last):
+  File "train.py", line 648, in <module>
+    main() # pylint: disable=no-value-for-parameter
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1078, in main
+    rv = self.invoke(ctx)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/decorators.py", line 33, in new_func
+    return f(get_current_context(), *args, **kwargs)
+  File "train.py", line 643, in main
+    torch.multiprocessing.spawn(fn=subprocess_fn, args=(args, temp_dir), nprocs=args.num_gpus)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 230, in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method='spawn')
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 188, in start_processes
+    while not context.join():
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 150, in join
+    raise ProcessRaisedException(msg, error_index, failed_process.pid)
+torch.multiprocessing.spawn.ProcessRaisedException: 
+
+-- Process 0 terminated with the following error:
+Traceback (most recent call last):
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/multiprocessing/spawn.py", line 59, in _wrap
+    fn(i, *args)
+  File "/home/nnthao/tphat/FDA/train.py", line 471, in subprocess_fn
+    training_loop.training_loop(rank=rank, **args)
+  File "/home/nnthao/tphat/FDA/training/training_loop.py", line 417, in training_loop
+    # Evaluate metrics.
+  File "/home/nnthao/tphat/FDA/metrics/metric_main.py", line 47, in calc_metric
+    results = _metric_dict[metric](opts)
+  File "/home/nnthao/tphat/FDA/metrics/metric_main.py", line 87, in fid2993_full
+    fid = frechet_inception_distance.compute_fid(opts, max_real=2993, num_gen=2993)
+  File "/home/nnthao/tphat/FDA/metrics/frechet_inception_distance.py", line 29, in compute_fid
+    mu_gen, sigma_gen = metric_utils.compute_feature_stats_for_generator(
+  File "/home/nnthao/tphat/FDA/metrics/metric_utils.py", line 271, in compute_feature_stats_for_generator
+    for imgs_batch, masks_batch, labels_batch, channels_batch in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset,
+ValueError: too many values to unpack (expected 3)
+

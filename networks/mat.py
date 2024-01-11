@@ -742,7 +742,7 @@ class FirstStage(nn.Module):
         super().__init__()
         res = 64
 
-        self.conv_first = Conv2dLayerPartial(in_channels=img_channels+1, out_channels=dim, kernel_size=3, activation=activation)
+        self.conv_first = Conv2dLayerYolo(in_channels=img_channels+1, out_channels=dim, kernel_size=3, activation=activation)
         self.enc_conv = nn.ModuleList()
         down_time = int(np.log2(img_resolution // res))
         for i in range(down_time):  # from input size to 64
@@ -789,7 +789,7 @@ class FirstStage(nn.Module):
             res = res * 2
             self.dec_conv.append(DecStyleBlock(res, dim, dim, activation, style_dim, use_noise, demodulate, img_channels))
 
-    def forward(self, images_in, masks_in, ws, noise_mode='random'):
+    def forward(self, images_in, masks_in, channel_in, ws, noise_mode='random'):
         x = torch.cat([masks_in - 0.5, images_in * masks_in], dim=1)
 
         skips = []
@@ -866,8 +866,8 @@ class SynthesisNet(nn.Module):
         style_dim = w_dim + nf(2) * 2
         self.dec = Decoder(resolution_log2, activation, style_dim, use_noise, demodulate, img_channels)
 
-    def forward(self, images_in, masks_in, ws, noise_mode='random', return_stg1=False):
-        out_stg1 = self.first_stage(images_in, masks_in, ws, noise_mode=noise_mode)
+    def forward(self, images_in, masks_in, channel_in, ws, noise_mode='random', return_stg1=False):
+        out_stg1 = self.first_stage(images_in, masks_in, channel_in, ws, noise_mode=noise_mode)
 
         # encoder
         x = images_in * masks_in + out_stg1 * (1 - masks_in)
@@ -925,16 +925,16 @@ class Generator(nn.Module):
                                   num_ws=self.synthesis.num_layers,
                                   **mapping_kwargs)
 
-    def forward(self, images_in, masks_in, z, c, truncation_psi=1, truncation_cutoff=None, skip_w_avg_update=False,
+    def forward(self, images_in, masks_in, channel_in, z, c, truncation_psi=1, truncation_cutoff=None, skip_w_avg_update=False,
                 noise_mode='random', return_stg1=False):
         ws = self.mapping(z, c, truncation_psi=truncation_psi, truncation_cutoff=truncation_cutoff,
                           skip_w_avg_update=skip_w_avg_update)
 
         if not return_stg1:
-            img = self.synthesis(images_in, masks_in, ws, noise_mode=noise_mode)
+            img = self.synthesis(images_in, masks_in, channel_in, ws, noise_mode=noise_mode)
             return img
         else:
-            img, out_stg1 = self.synthesis(images_in, masks_in, ws, noise_mode=noise_mode, return_stg1=True)
+            img, out_stg1 = self.synthesis(images_in, masks_in, channel_in, ws, noise_mode=noise_mode, return_stg1=True)
             return img, out_stg1
 
 

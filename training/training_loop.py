@@ -60,8 +60,8 @@ def setup_snapshot_image_grid(training_set, random_seed=0):
             label_groups[label] = [indices[(i + gw) % len(indices)] for i in range(len(indices))]
 
     # Load data.
-    images, masks, labels = zip(*[training_set[i] for i in grid_indices])
-    return (gw, gh), np.stack(images), np.stack(masks), np.stack(labels)
+    images, masks, labels, channels = zip(*[training_set[i] for i in grid_indices])
+    return (gw, gh), np.stack(images), np.stack(masks), np.stack(labels), np.stack(channels)
 
 #----------------------------------------------------------------------------
 
@@ -169,7 +169,8 @@ def training_loop(
         # G
         img_in = torch.empty([batch_gpu, training_set.num_channels, training_set.resolution, training_set.resolution], device=device)
         mask_in = torch.empty([batch_gpu, 1, training_set.resolution, training_set.resolution], device=device)
-        img = misc.print_module_summary(G, [img_in, mask_in, z, c])
+        channel_in = torch.empty([batch_gpu, training_set.num_channels, training_set.resolution, training_set.resolution], device=device)
+        img = misc.print_module_summary(G, [img_in, mask_in, channel_in, z, c])
         # D
         img_stg1 = torch.empty([batch_gpu, 3, training_set.resolution, training_set.resolution], device=device)
         misc.print_module_summary(D, [img, mask_in, img_stg1, c])
@@ -248,20 +249,23 @@ def training_loop(
     grid_c = None
     grid_img = None
     grid_mask = None
+    grid_channel = None
     if rank == 0:
         print('Exporting sample images...')
-        grid_size, images, masks, labels = setup_snapshot_image_grid(training_set=val_set)
+        grid_size, images, masks, labels, channels = setup_snapshot_image_grid(training_set=val_set)
         save_image_grid(images, os.path.join(run_dir, 'reals.png'), drange=[0, 255], grid_size=grid_size)
         # adaptation to inpainting config
         save_image_grid(masks, os.path.join(run_dir, 'masks.png'), drange=[0, 1], grid_size=grid_size)
+        save_image_grid(channels, os.path.join(run_dir, 'channels.png'), drange=[0, 255], grid_size=grid_size)
         # --------------------
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
         grid_c = torch.from_numpy(labels).to(device).split(batch_gpu)
         # adaptation to inpainting config
         grid_img = (torch.from_numpy(images).to(device) / 127.5 - 1).split(batch_gpu)  # [-1, 1]
         grid_mask = torch.from_numpy(masks).to(device).split(batch_gpu)  # {0, 1}
-        images = torch.cat([G_ema(img_in, mask_in, z, c, noise_mode='const').cpu() \
-                            for img_in, mask_in, z, c in zip(grid_img, grid_mask, grid_z, grid_c)]).numpy()
+        grid_channel = torch.from_numpy(channels).to(device).split(batch_gpu)  # [0, 255]
+        images = torch.cat([G_ema(img_in, mask_in, channel_in, z, c, noise_mode='const').cpu() \
+                            for img_in, mask_in, channel_in, z, c in zip(grid_img, grid_mask, grid_channel, grid_z, grid_c)]).numpy()
         # --------------------
         save_image_grid(images, os.path.join(run_dir, 'fakes_init.png'), drange=[-1,1], grid_size=grid_size)
 
@@ -296,10 +300,11 @@ def training_loop(
 
         # Fetch training data.
         with torch.autograd.profiler.record_function('data_fetch'):
-            phase_real_img, phase_mask, phase_real_c = next(training_set_iterator)
+            phase_real_img, phase_mask, phase_real_c, phase_channel = next(training_set_iterator)
             phase_real_img = (phase_real_img.to(device).to(torch.float32) / 127.5 - 1).split(batch_gpu)
             # adaptation to inpainting config
             phase_mask = phase_mask.to(device).to(torch.float32).split(batch_gpu)
+            phase_channel = phase_channel.to(device).to(torch.float32).split(batch_gpu)
             # --------------------
             phase_real_c = phase_real_c.to(device).split(batch_gpu)
             all_gen_z = torch.randn([len(phases) * batch_size, G.z_dim], device=device)
@@ -320,10 +325,10 @@ def training_loop(
             phase.module.requires_grad_(True)
 
             # Accumulate gradients over multiple rounds.
-            for round_idx, (real_img, mask, real_c, gen_z, gen_c) in enumerate(zip(phase_real_img, phase_mask, phase_real_c, phase_gen_z, phase_gen_c)):
+            for round_idx, (real_img, mask, channel, real_c, gen_z, gen_c) in enumerate(zip(phase_real_img, phase_mask, phase_channel, phase_real_c, phase_gen_z, phase_gen_c)):
                 sync = (round_idx == batch_size // (batch_gpu * num_gpus) - 1)
                 gain = phase.interval
-                loss.accumulate_gradients(phase=phase.name, real_img=real_img, mask=mask, real_c=real_c, gen_z=gen_z, gen_c=gen_c, sync=sync, gain=gain)
+                loss.accumulate_gradients(phase=phase.name, real_img=real_img, mask=mask, channel=channel, real_c=real_c, gen_z=gen_z, gen_c=gen_c, sync=sync, gain=gain)
 
             # Update weights.
             phase.module.requires_grad_(False)
@@ -388,8 +393,8 @@ def training_loop(
 
         # Save image snapshot.
         if (rank == 0) and (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
-            images = torch.cat([G_ema(img_in, mask_in, z, c, noise_mode='const').cpu() \
-                                for img_in, mask_in, z, c in zip(grid_img, grid_mask, grid_z, grid_c)]).numpy()
+            images = torch.cat([G_ema(img_in, mask_in, channel_in, z, c, noise_mode='const').cpu() \
+                                for img_in, mask_in, channel_in, z, c in zip(grid_img, grid_mask, grid_channel, grid_z, grid_c)]).numpy()
             save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'), drange=[-1,1], grid_size=grid_size)
 
         # Save network snapshot.

@@ -1,3 +1,4 @@
 srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
 slurmstepd: error: *** STEP 2221.0 ON gpu01 CANCELLED AT 2024-01-10T07:39:15 ***
 slurmstepd: error: *** JOB 2221 ON gpu01 CANCELLED AT 2024-01-10T07:39:15 ***
+srun: error: gpu01: task 0: Exited with exit code 1

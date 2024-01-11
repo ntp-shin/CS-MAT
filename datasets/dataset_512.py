@@ -325,7 +325,7 @@ class ImageFolderMaskDataset(Dataset):
             image = image[:, :, ::-1]
             channel = channel[:, :, ::-1]
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
-        return image.copy(), mask, self.get_label(idx)
+        return image.copy(), mask, self.get_label(idx), channel.copy()
 
 
 if __name__ == '__main__':
