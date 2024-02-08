@@ -267,7 +267,7 @@ class ImageFolderMaskDataset(Dataset):
 
     def _load_raw_det(self, raw_idx):
         fname = self._det_fnames[raw_idx]
-        det = np.zeros((1, self.image_shape[1], self.image_shape[2]), dtype=np.float32)
+        det = np.full((1, self.image_shape[1], self.image_shape[2]), .7, dtype=np.float32)
 
         with open(self._det_path + fname) as f:
             for line in f.readlines():
@@ -313,6 +313,11 @@ class ImageFolderMaskDataset(Dataset):
             assert image.ndim == 3 and det.ndim == 3 # CHW
             image = image[:, :, ::-1]
             det = det[:, :, ::-1]
+
+        # Sampling mask
+        # mask_idx = np.random.randint(0, 30000)
+        # mask = cv2.imread('/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-mask/' + str(mask_idx) + '.png', cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
+        # mask = mask.astype(np.float32)[np.newaxis]
 
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
         return image.copy(), mask, self.get_label(idx), det.copy()

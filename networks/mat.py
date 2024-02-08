@@ -101,8 +101,89 @@ class Conv2dLayerPartial(nn.Module):
                 mask_ratio = torch.mul(mask_ratio, update_mask)
             x = self.conv(x)
             x = torch.mul(x, mask_ratio)
+            # global c2dllp_count
+            # print(x.shape, x.min(), x.max(), x.mean())
+            # a = (x[0].mean(dim=0, keepdim=True).permute(1, 2, 0) * torch.Tensor([[[1, 1, 1]]]).to(torch.device('cuda')))
+            # print(a.shape, a.min(), a.max(), a.mean())
+            # norm_a = (a - a.min()) / (a.max() - a.min())
+            # print(norm_a.shape, norm_a.min(), norm_a.max(), norm_a.mean())
+            # plt.imsave('stage_img/enc_conv/conv' + str(c2dllp_count) + '.png', norm_a.detach().cpu().numpy())
+            # print()
+            # c2dllp_count += 1
+            # if c2dllp_count == 3:
+            #     raise IOError('Dung o day con cho')
             return x, update_mask
         else:
+            x = self.conv(x)
+            return x, None
+c2dllp_count = 0
+import matplotlib.pyplot as plt
+@persistence.persistent_class
+class FirstConv2dLayerPartial(nn.Module):
+    def __init__(self,
+                 in_channels,                    # Number of input channels.
+                 out_channels,                   # Number of output channels.
+                 kernel_size,                    # Width and height of the convolution kernel.
+                 bias            = True,         # Apply additive bias before the activation function?
+                 activation      = 'linear',     # Activation function: 'relu', 'lrelu', etc.
+                 up              = 1,            # Integer upsampling factor.
+                 down            = 1,            # Integer downsampling factor.
+                 resample_filter = [1,3,3,1],    # Low-pass filter to apply when resampling activations.
+                 conv_clamp      = None,         # Clamp the output to +-X, None = disable clamping.
+                 trainable       = True,         # Update the weights of this layer during training?
+                 ):
+        super().__init__()
+        self.conv = Conv2dLayer(in_channels, out_channels, kernel_size, bias, activation, up, down, resample_filter,
+                                conv_clamp, trainable)
+
+        self.weight_maskUpdater = torch.ones(1, 1, kernel_size, kernel_size)
+        self.slide_winsize = kernel_size ** 2
+        self.stride = down
+        self.padding = kernel_size // 2 if kernel_size % 2 == 1 else 0
+
+    def forward(self, x, mask=None, det=None):
+        if mask is not None:
+            with torch.no_grad():
+                if self.weight_maskUpdater.type() != x.type():
+                    self.weight_maskUpdater = self.weight_maskUpdater.to(x)
+                update_mask = F.conv2d(mask, self.weight_maskUpdater, bias=None, stride=self.stride, padding=self.padding)
+                mask_ratio = self.slide_winsize / (update_mask + 1e-8)
+                update_mask = torch.clamp(update_mask, 0, 1)  # 0 or 1
+                mask_ratio = torch.mul(mask_ratio, update_mask)
+            # print(x.shape, x.min(), x.max())
+            # a = ((x[0].mean(dim=0, keepdim=True).permute(1, 2, 0) * torch.Tensor([[[1, 1, 1]]]).to(torch.device('cuda'))) + 1 )/2
+            # print(a.shape, a.min(), a.max())
+            # plt.imsave('x.png', a.detach().cpu().numpy())
+            # print()
+
+            x = self.conv(x)
+
+            # print(x.min(), x.max(), x.mean())
+            # a = ((x[0].mean(dim=0, keepdim=True).permute(1, 2, 0) * torch.Tensor([[[1, 1, 1]]]).to(torch.device('cuda'))) + 1 )/2
+            # print(a.shape, a.min(), a.max())
+            # plt.imsave('conv_x.png', a.detach().cpu().numpy())
+            # print()
+
+            x = torch.mul(x, mask_ratio)
+
+            # print(x.min(), x.max(), x.mean())
+            # a = ((x[0].mean(dim=0, keepdim=True).permute(1, 2, 0) * torch.Tensor([[[1, 1, 1]]]).to(torch.device('cuda'))) + 1 )/2
+            # print(a.shape, a.min(), a.max())
+            # plt.imsave('masked_x.png', a.detach().cpu().numpy())
+            # print()
+
+            x = torch.mul(x, det)
+
+            # print(x.min(), x.max(), x.mean())
+            # a = ((x[0].mean(dim=0, keepdim=True).permute(1, 2, 0) * torch.Tensor([[[1, 1, 1]]]).to(torch.device('cuda'))) + 1 )/2
+            # print(a.shape, a.min(), a.max())
+            # plt.imsave('det_x.png', a.detach().cpu().numpy())
+            # print()
+
+            # raise IOError('Dung o day con cho')
+            return x, update_mask
+        else:
+            raise IOError('NGU VC')
             x = self.conv(x)
             return x, None
 
@@ -151,10 +232,10 @@ class WindowAttention(nn.Module):
 
         attn = (q @ k) * self.scale
 
-        if mask is not None:
-            nW = mask.shape[0]
-            attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
-            attn = attn.view(-1, self.num_heads, N, N)
+        # if mask is not None:
+        #     nW = mask.shape[0]
+        #     attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
+        #     attn = attn.view(-1, self.num_heads, N, N)
 
         if mask_windows is not None:
             attn_mask_windows = mask_windows.squeeze(-1).unsqueeze(1).unsqueeze(1)
@@ -246,6 +327,28 @@ class SwinTransformerBlock(nn.Module):
 
         return attn_mask
 
+    def calculate_naive_mask(self, x_size):
+        # calculate attention mask for SW-MSA
+        H, W = x_size
+        img_mask = torch.zeros((1, H, W, 1))  # 1 H W 1
+        h_slices = (slice(self.shift_size, -self.shift_size),
+                    slice(0, self.shift_size),
+                    slice(-self.shift_size, None))
+        w_slices = (slice(self.shift_size, -self.shift_size),
+                    slice(0, self.shift_size),
+                    slice(-self.shift_size, None))
+        cnt = 0
+        for h in h_slices:
+            for w in w_slices:
+                img_mask[:, h, w, :] = cnt
+                cnt += 1
+
+        mask_windows = window_partition(img_mask, self.window_size)  # nW, window_size, window_size, 1
+        mask_windows = mask_windows.view(-1, self.window_size * self.window_size)
+        attn_mask = mask_windows.unsqueeze(2)
+
+        return attn_mask
+
     def forward(self, x, x_size, mask=None):
         # H, W = self.input_resolution
         H, W = x_size
@@ -257,15 +360,22 @@ class SwinTransformerBlock(nn.Module):
         if mask is not None:
             mask = mask.view(B, H, W, 1)
 
-        # cyclic shift
-        if self.shift_size > 0:
-            shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
-            if mask is not None:
-                shifted_mask = torch.roll(mask, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
-        else:
-            shifted_x = x
-            if mask is not None:
-                shifted_mask = mask
+        # # cyclic shift
+        # if self.shift_size > 0:
+        #     shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+        #     if mask is not None:
+        #         shifted_mask = torch.roll(mask, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+        # else:
+        #     shifted_x = x
+        #     if mask is not None:
+        #         shifted_mask = mask
+
+        naive_attn_mask = self.calculate_naive_mask(x_size).to(x.device)
+
+        x_naive_windows = x_windows.clone()
+        x_naive_windows = x_naive_windows.view(B, -1, self.window_size * self.window_size, C)
+
+        max_cnt = naive_attn_mask.max()
 
         # partition windows
         x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
@@ -703,7 +813,7 @@ class FirstStage(nn.Module):
         super().__init__()
         res = 64
 
-        self.conv_first = Conv2dLayerPartial(in_channels=img_channels+1+1, out_channels=dim, kernel_size=3, activation=activation)
+        self.conv_first = FirstConv2dLayerPartial(in_channels=img_channels+1, out_channels=dim, kernel_size=3, activation=activation)
         self.enc_conv = nn.ModuleList()
         down_time = int(np.log2(img_resolution // res))
         for i in range(down_time):  # from input size to 64
@@ -751,10 +861,10 @@ class FirstStage(nn.Module):
             self.dec_conv.append(DecStyleBlock(res, dim, dim, activation, style_dim, use_noise, demodulate, img_channels))
 
     def forward(self, images_in, masks_in, detects_in, ws, noise_mode='random'):
-        x = torch.cat([masks_in - 0.5, images_in * masks_in, detects_in - 0.5], dim=1)
+        x = torch.cat([masks_in - 0.5, images_in * masks_in], dim=1)
 
         skips = []
-        x, mask = self.conv_first(x, masks_in)  # input size
+        x, mask = self.conv_first(x, masks_in, detects_in)  # input size
         skips.append(x)
         for i, block in enumerate(self.enc_conv):  # input size to 64
             x, mask = block(x, mask)

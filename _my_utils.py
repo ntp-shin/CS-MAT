@@ -1,9 +1,18 @@
-
+import contextlib
+import time
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+import torch
+from torchvision.io import read_image
+
+import dnnlib
+import legacy
 from torch_utils import misc
+from datasets import mask_generator_512
+from metrics import metric_main
+from networks import mat
 
 def print_model_tensors_stats(model, named_model, detail=False, num_gpus=0):
     ts, buff_ts = 0, 0
@@ -120,3 +129,67 @@ def plot_images(images, layout='square', layout_size=(), figsize=(16, 16), filen
         plt.imsave(filename, images)
     plt.imshow(images)
     plt.show()
+
+def create_training_masks(path='/media/nnthao/MAT/training_masks/', n=30000):
+    for i in range(n):
+        mask = mask_generator_512.RandomMask(512).transpose(1, 2, 0)
+        plt.imsave(path + str(i) + '.png', np.concatenate((mask, mask, mask), axis=2))
+
+
+def build_model(res=512, c=0, img_channels=3, batch=2, device=torch.device('cuda:0')):
+    initG_start_time = time.time()
+    G = mat.Generator(z_dim=res, c_dim=c, w_dim=res, img_resolution=res, img_channels=img_channels).to(device)
+    initG_time = time.time() - initG_start_time
+
+    evalG_start_time = time.time()
+    G.eval()
+    evalG_time = time.time() - evalG_start_time
+
+    D = mat.Discriminator(c_dim=0, img_resolution=res, img_channels=img_channels).to(device)
+
+    img = torch.randn(batch, 3, res, res).to(device)
+    mask = torch.randn(batch, 1, res, res).to(device)
+    det = torch.randn(batch, 1, res, res).to(device)
+    z_dim = torch.randn(batch, res).to(device)
+    c_dim = torch.randn(batch, c).to(device)
+
+    misc.print_module_summary(G, [img, mask, det, z_dim, c_dim])
+    print()
+    print_model_tensors_stats(G, 'Generator', False, 1)
+    print()
+    print_model_tensors_stats(D, 'Discriminator', False, 1)
+    print()
+
+    genG_start_time = time.time()
+    with torch.no_grad():
+        img, img_stg1 = G(img, mask, det, z_dim, None, return_stg1=True)
+    genG_time = time.time() - genG_start_time
+
+    score, score_stg1 = D(img, mask, img_stg1, None)
+
+    print('output of G:', img.shape, img_stg1.shape)
+    print('output of D:', score.shape, score_stg1.shape)
+    print()
+    print('initializing G time: ', initG_time)
+    print('evaluating G time: ', evalG_time)
+    print('generating G time: ', genG_time)
+
+def fid_evaluating(network_pkl, res=512, max_size=2993, use_labels=False, xflip=False,
+                   data_val='/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img',
+                   det_data_val='/media/nnthao/MAT/label_yolo/CelebA-HQ/CelebA-HQ-val_img/',
+                   data_loader='datasets.dataset_512.ImageFolderMaskDataset',
+                   metrics=['fid2993_full'], device=torch.device('cuda:0'), num_gpus=1, rank=0):
+    val_set_kwargs = dnnlib.EasyDict(class_name=data_loader, path=data_val, det_path=det_data_val, use_labels=use_labels, max_size=max_size, xflip=xflip, resolution=res)
+
+    print(f'Loading networks from: {network_pkl}')
+    with dnnlib.util.open_url(network_pkl) as f:
+        model = legacy.load_network_pkl(f)
+        G = model['G_ema'].to(device).eval().requires_grad_(False) # type: ignore
+        # D = model['D'].to(device)
+
+    print('Evaluating metrics...')
+    for metric in metrics:
+        result_dict = metric_main.calc_metric(metric=metric, G=G, dataset_kwargs=val_set_kwargs, num_gpus=num_gpus, rank=rank, device=device)
+        if rank == 0:
+            metric_main.report_metric(result_dict)
+    del model # conserve memory

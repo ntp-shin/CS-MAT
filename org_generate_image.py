@@ -57,13 +57,12 @@ def named_params_and_buffers(module):
     assert isinstance(module, torch.nn.Module)
     return list(module.named_parameters()) + list(module.named_buffers())
 
-import matplotlib.pyplot as plt
+
 @click.command()
 @click.pass_context
 @click.option('--network', 'network_pkl', help='Network pickle filename', required=True)
 @click.option('--dpath', help='the path of the input image', required=True)
 @click.option('--mpath', help='the path of the mask')
-@click.option('--dets-path', help='the path of the detection', required=True)
 @click.option('--resolution', type=int, help='resolution of input image', default=512, show_default=True)
 @click.option('--trunc', 'truncation_psi', type=float, help='Truncation psi', default=1, show_default=True)
 @click.option('--noise-mode', help='Noise mode', type=click.Choice(['const', 'random', 'none']), default='const', show_default=True)
@@ -73,7 +72,6 @@ def generate_images(
     network_pkl: str,
     dpath: str,
     mpath: Optional[str],
-    dets_path: str,
     resolution: int,
     truncation_psi: float,
     noise_mode: str,
@@ -91,13 +89,10 @@ def generate_images(
     print(f'Loading data from: {dpath}')
     img_list = sorted(glob.glob(dpath + '/*.png') + glob.glob(dpath + '/*.jpg'))
 
-    print(f'Loading detection data from: {dets_path}')
-    det_list = sorted(glob.glob(dets_path + '/*') + glob.glob(dets_path + '/*.txt'))
-
     if mpath is not None:
         print(f'Loading mask from: {mpath}')
         mask_list = sorted(glob.glob(mpath + '/*.png') + glob.glob(mpath + '/*.jpg'))
-        assert len(img_list) == len(mask_list) and len(img_list) == len(det_list), 'illegal mapping'
+        assert len(img_list) == len(mask_list), 'illegal mapping'
 
     print(f'Loading networks from: {network_pkl}')
     device = torch.device('cuda')
@@ -125,28 +120,6 @@ def generate_images(
         image = image[:3]
         return image
 
-    def read_det(det_path, resolution):
-        det = np.full((1, resolution, resolution), .7, dtype=np.float32)
-
-        with open(det_path) as f:
-            for line in f.readlines():
-                line = line.strip().split(' ')
-
-                if len(line) == 5:
-                    x_center = float(line[1]) * resolution
-                    y_center = float(line[2]) * resolution
-                    width_box = float(line[3]) * resolution
-                    height_box = float(line[4]) * resolution
-
-                    x1 = np.floor(x_center - width_box / 2).astype(int)
-                    y1 = np.floor(y_center - height_box / 2).astype(int)
-                    x2 = np.floor(x_center + width_box / 2).astype(int)
-                    y2 = np.floor(y_center + height_box / 2).astype(int)
-
-                    det[:, y1:y2, x1:x2] = 1
-
-        return det.copy()
-
     def to_image(image, lo, hi):
         image = np.asarray(image, dtype=np.float32)
         image = (image - lo) * (255 / (hi - lo))
@@ -159,27 +132,21 @@ def generate_images(
     if resolution != 512:
         noise_mode = 'random'
     with torch.no_grad():
-        for i, (ipath, detpath) in enumerate(zip(img_list, det_list)):
+        for i, ipath in enumerate(img_list):
             iname = os.path.basename(ipath).replace('.jpg', '.png')
             print(f'Prcessing: {iname}')
             image = read_image(ipath)
-            # plt.imsave('i.png', image.transpose((1, 2, 0)))
             image = (torch.from_numpy(image).float().to(device) / 127.5 - 1).unsqueeze(0)
-
-            det = read_det(detpath, resolution)
-            # plt.imsave('d.png', det.transpose((1, 2, 0)) * np.ones((1, 1, 3)))
-            det = torch.from_numpy(det).float().to(device).unsqueeze(0)
 
             if mpath is not None:
                 mask = cv2.imread(mask_list[i], cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
                 mask = torch.from_numpy(mask).float().to(device).unsqueeze(0).unsqueeze(0)
             else:
                 mask = RandomMask(resolution) # adjust the masking ratio by using 'hole_range'
-                # plt.imsave('m.png', mask.transpose((1, 2, 0)) * np.ones((1, 1, 3)))
                 mask = torch.from_numpy(mask).float().to(device).unsqueeze(0)
 
             z = torch.from_numpy(np.random.randn(1, G.z_dim)).to(device)
-            output = G(image, mask, det, z, label, truncation_psi=truncation_psi, noise_mode=noise_mode)
+            output = G(image, mask, z, label, truncation_psi=truncation_psi, noise_mode=noise_mode)
             output = (output.permute(0, 2, 3, 1) * 127.5 + 127.5).round().clamp(0, 255).to(torch.uint8)
             output = output[0].cpu().numpy()
             PIL.Image.fromarray(output, 'RGB').save(f'{outdir}/{iname}')
