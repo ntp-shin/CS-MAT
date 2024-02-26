@@ -1,0 +1,29 @@
+#!/bin/sh
+#SBATCH -w gpu01 --gpus=2 --cpus-per-gpu=24 --mem-per-gpu=10GB -J CSWinTv4 -o /home/nnthao/lntuong/FDA-v4/std/train-out -e /home/nnthao/lntuong/FDA-v4/std/train-err --time=168:00:00
+
+cd ~/lntuong/FDA-v4
+
+srun python -W ignore train.py \
+    --outdir=/media/nnthao/MAT/saved_model/good_cswint_model \
+    --gpus=2 \
+    --snap=10 \
+    --batch=16 \
+    --kimg=1200 \
+    --metrics=fid2993_full \
+    --data=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img \
+    --data_val=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img \
+    --dataloader=datasets.dataset_512.ImageFolderMaskDataset \
+    --mirror=True \
+    --cond=False \
+    --cfg=celeba512 \
+    --aug=noaug \
+    --generator=networks.mat.Generator \
+    --discriminator=networks.mat.Discriminator \
+    --loss=losses.loss.TwoStageLoss \
+    --pr=0.1 \
+    --pl=False \
+    --truncation=0.5 \
+    --style_mix=0.5 \
+    --ema=10 \
+    --lr=0.001 \
+    --resume=/media/nnthao/MAT/saved_model/good_cswint_model/04-81616168-update-mask-stripe2-2gpus/network-snapshot-000600.pkl

@@ -1,0 +1,15 @@
+#!/bin/sh
+#SBATCH -w gpu01 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=5GB -J gen-MAT -o /home/nnthao/lntuong/FDA/std/gen-out -e /home/nnthao/lntuong/FDA/std/gen-err --time=15
+
+cd ~/lntuong/FDA
+
+srun python generate_image.py \
+    --network /media/nnthao/ntp/yolo/00006-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg25000-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-002000.pkl \
+    --dpath /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/ \
+    --dets-path /media/nnthao/MAT/label_yolo/CelebA-HQ/CelebA-HQ-val_img/ \
+    --outdir /media/nnthao/MAT/Data/CelebA-HQ/sample_img3
+
+# srun python org_generate_image.py \
+#     --network /media/nnthao/MAT/saved_model/paper_model/00002-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug/network-snapshot-000600.pkl \
+#     --dpath /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/ \
+#     --outdir /media/nnthao/MAT/Data/CelebA-HQ/sample_img2

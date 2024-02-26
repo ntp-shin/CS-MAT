@@ -1,0 +1,99 @@
+Setting up PyTorch plugin "bias_act_plugin"... Done.
+Setting up PyTorch plugin "upfirdn2d_plugin"... Done.
+
+Generator                            Parameters  Buffers  Output shape        Datatype
+---                                  ---         ---      ---                 ---     
+mapping.fc0                          262656      -        [2, 512]            float32 
+mapping.fc1                          262656      -        [2, 512]            float32 
+mapping.fc2                          262656      -        [2, 512]            float32 
+mapping.fc3                          262656      -        [2, 512]            float32 
+mapping.fc4                          262656      -        [2, 512]            float32 
+mapping.fc5                          262656      -        [2, 512]            float32 
+mapping.fc6                          262656      -        [2, 512]            float32 
+mapping.fc7                          262656      -        [2, 512]            float32 
+mapping                              -           512      [2, 12, 512]        float32 
+synthesis.first_stage.conv_first:0   6660        16       [2, 180, 512, 512]  float32 
+synthesis.first_stage.conv_first:1   -           -        [2, 180, 512, 512]  float32 
+synthesis.first_stage.enc_conv.0:0   291780      16       [2, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.0:1   -           -        [2, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.1:0   291780      16       [2, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.1:1   -           -        [2, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.2:0   291780      16       [2, 180, 64, 64]    float32 
+synthesis.first_stage.enc_conv.2:1   -           -        [2, 180, 64, 64]    float32 
+synthesis.first_stage.tran.0:0       817740      16       [2, 4096, 180]      float32 
+synthesis.first_stage.tran.0:1       -           -        [2, 4096, 180]      float32 
+synthesis.first_stage.tran.1:0       1372500     32       [2, 1024, 180]      float32 
+synthesis.first_stage.tran.1:1       -           -        [2, 1024, 180]      float32 
+synthesis.first_stage.tran.2         1635480     32       [2, 256, 180]       float32 
+synthesis.first_stage.ws_style       92340       -        [2, 180]            float32 
+synthesis.first_stage.to_square      46336       -        [2, 256]            float32 
+synthesis.first_stage.down_conv      1167120     64       [2, 180, 1, 1]      float32 
+synthesis.first_stage.to_style       65160       -        [2, 360]            float32 
+synthesis.first_stage.tran.3         1372500     32       [2, 1024, 180]      float32 
+synthesis.first_stage.tran.4         1109520     32       [2, 4096, 180]      float32 
+synthesis.first_stage.dec_conv.0:0   876243      64       [2, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.0:1   -           -        [2, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.1:0   876243      64       [2, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.1:1   -           -        [2, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.2:0   876243      64       [2, 180, 512, 512]  float32 
+synthesis.first_stage.dec_conv.2:1   -           -        [2, 180, 512, 512]  float32 
+synthesis.first_stage                -           -        [2, 3, 512, 512]    float32 
+synthesis.enc.EncConv_Block_512x512  37440       32       [2, 64, 512, 512]   float32 
+synthesis.enc.EncConv_Block_256x256  221440      32       [2, 128, 256, 256]  float32 
+synthesis.enc.EncConv_Block_128x128  885248      32       [2, 256, 128, 128]  float32 
+synthesis.enc.EncConv_Block_64x64    3539968     32       [2, 512, 64, 64]    float32 
+synthesis.enc.EncConv_Block_32x32    4719616     32       [2, 512, 32, 32]    float32 
+synthesis.enc.EncConv_Block_16x16    4719616     32       [2, 512, 16, 16]    float32 
+synthesis.to_square                  131328      -        [2, 256]            float32 
+synthesis.to_style.conv              7079424     48       [2, 512, 2, 2]      float32 
+synthesis.to_style.pool              -           -        [2, 512, 1, 1]      float32 
+synthesis.to_style.fc                525312      -        [2, 1024]           float32 
+synthesis.dec.Dec_16x16:0            6295044     320      [2, 512, 16, 16]    float32 
+synthesis.dec.Dec_16x16:1            -           -        [2, 512, 16, 16]    float32 
+synthesis.dec.Dec_32x32:0            7081989     2112     [2, 512, 32, 32]    float32 
+synthesis.dec.Dec_32x32:1            -           -        [2, 512, 32, 32]    float32 
+synthesis.dec.Dec_64x64:0            7081989     8256     [2, 512, 64, 64]    float32 
+synthesis.dec.Dec_64x64:1            -           -        [2, 512, 64, 64]    float32 
+synthesis.dec.Dec_128x128:0          3344645     32832    [2, 256, 128, 128]  float32 
+synthesis.dec.Dec_128x128:1          -           -        [2, 256, 128, 128]  float32 
+synthesis.dec.Dec_256x256:0          1229957     131136   [2, 128, 256, 256]  float32 
+synthesis.dec.Dec_256x256:1          -           -        [2, 128, 256, 256]  float32 
+synthesis.dec.Dec_512x512:0          504389      524352   [2, 64, 512, 512]   float32 
+synthesis.dec.Dec_512x512:1          -           -        [2, 64, 512, 512]   float32 
+synthesis                            -           -        [2, 3, 512, 512]    float32 
+---                                  ---         ---      ---                 ---     
+Total                                60688078    700224   -                   -       
+
+
+PARAMS::Generator
+Trainable params: 60688078
+Non-Trainable params: 0
+Params-tensors per device:
+- cuda0	423
+- cpus	0
+BUFF::Generator
+Trainable buff: 0
+Non-Trainable buff: 700224
+Buff-tensors per device:
+- cuda0	80
+- cpus	0
+
+PARAMS::Discriminator
+Trainable params: 36231618
+Non-Trainable params: 0
+Params-tensors per device:
+- cuda0	86
+- cpus	0
+BUFF::Discriminator
+Trainable buff: 0
+Non-Trainable buff: 736
+Buff-tensors per device:
+- cuda0	46
+- cpus	0
+
+output of G: torch.Size([2, 3, 512, 512]) torch.Size([2, 3, 512, 512])
+output of D: torch.Size([2, 1]) torch.Size([2, 1])
+
+initializing G time:  5.679869890213013
+evaluating G time:  0.0013184547424316406
+generating G time:  0.13259196281433105

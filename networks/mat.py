@@ -360,6 +360,222 @@ class PatchUpsampling(nn.Module):
         return x, x_size, mask
 
 
+@misc.profiled_function
+def img2windows(img, H_sp, W_sp):
+    """
+    img: B C H W
+    """
+    B, C, H, W = img.shape
+    img_reshape = img.view(B, C, H // H_sp, H_sp, W // W_sp, W_sp)
+    img_perm = img_reshape.permute(0, 2, 4, 3, 5, 1).contiguous().reshape(-1, H_sp* W_sp, C)
+    return img_perm
+
+
+@misc.profiled_function
+def windows2img(img_splits_hw, H_sp, W_sp, H, W):
+    """
+    img_splits_hw: B' H_sp*W_sp C
+    """
+    B = int(img_splits_hw.shape[0] / (H * W / H_sp / W_sp))
+
+    img = img_splits_hw.view(B, H // H_sp, W // W_sp, H_sp, W_sp, -1)
+    img = img.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
+    return img
+
+
+@persistence.persistent_class
+class LePEAttention(nn.Module):
+    def __init__(self, dim, resolution, idx, split_size=7, dim_out=None, num_heads=8, attn_drop=0., proj_drop=0., qk_scale=None):
+        super().__init__()
+        self.dim = dim
+        self.dim_out = dim_out or dim
+        self.resolution = resolution
+        self.split_size = split_size
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        # NOTE scale factor was wrong in my original version, can set manually to be compat with prev weights
+        self.scale = qk_scale or head_dim ** -0.5
+        if idx == -1:
+            H_sp, W_sp = self.resolution, self.resolution
+        elif idx == 0:
+            H_sp, W_sp = self.resolution, self.split_size
+        elif idx == 1:
+            W_sp, H_sp = self.resolution, self.split_size
+        else:
+            print ("ERROR MODE", idx)
+            exit(0)
+        self.H_sp = H_sp
+        self.W_sp = W_sp
+        stride = 1
+        self.get_v = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1,groups=dim)
+
+        self.attn_drop = nn.Dropout(attn_drop)
+    
+    def to_cswin(self, x, is_mask=False):
+        B, N, C = x.shape
+        H = W = int(np.sqrt(N))
+        x = x.transpose(-2,-1).contiguous().view(B, C, H, W)
+        x = img2windows(x, self.H_sp, self.W_sp)
+
+        if is_mask:
+            x = x.reshape(-1, self.H_sp* self.W_sp, 1, C).permute(0, 2, 1, 3).contiguous()
+        else:
+            x = x.reshape(-1, self.H_sp* self.W_sp, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
+
+        return x
+
+    def get_lepe(self, x, func):
+        B, N, C = x.shape
+        H = W = int(np.sqrt(N))
+        x = x.transpose(-2,-1).contiguous().view(B, C, H, W)
+
+        H_sp, W_sp = self.H_sp, self.W_sp
+        x = x.view(B, C, H // H_sp, H_sp, W // W_sp, W_sp)
+        x = x.permute(0, 2, 4, 1, 3, 5).contiguous().reshape(-1, C, H_sp, W_sp) ### B', C, H', W'
+
+        lepe = func(x) ### B', C, H', W'
+        lepe = lepe.reshape(-1, self.num_heads, C // self.num_heads, H_sp * W_sp).permute(0, 1, 3, 2).contiguous()
+
+        x = x.reshape(-1, self.num_heads, C // self.num_heads, self.H_sp* self.W_sp).permute(0, 1, 3, 2).contiguous()
+        return x, lepe
+
+    def forward(self, qkv, mask=None):
+        """
+        x: B L C
+        """
+        q,k,v = qkv[0], qkv[1], qkv[2]
+
+        ### Img2Window
+        H = W = self.resolution
+        B, L, C = q.shape
+        assert L == H * W, "flatten img_tokens has wrong size"
+
+        q = self.to_cswin(q)
+        k = self.to_cswin(k)
+        v, lepe = self.get_lepe(v, self.get_v)
+
+        q = q * self.scale
+        attn = (q @ k.transpose(-2, -1))  # B head N C @ B head C N --> B head N N
+
+        # Partitioning mask and updating mask
+        if mask is not None:
+            attn_mask_stripes = self.to_cswin(mask, is_mask=True)
+            attn = attn + attn_mask_stripes.masked_fill(attn_mask_stripes == 0, float(-100.0)).masked_fill(attn_mask_stripes == 1, float(0.0)).transpose(-2, -1)
+
+            with torch.no_grad():
+                attn_mask_stripes = (torch.sum(attn_mask_stripes, dim=-2, keepdim=True) / (self.H_sp* self.W_sp) >= 0.1).repeat(1, 1, self.H_sp * self.W_sp, 1).to(mask.dtype)
+        else:
+            attn_mask_stripes = None
+        
+        attn = nn.functional.softmax(attn, dim=-1, dtype=attn.dtype)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v) + lepe   # B head N N @ B head N C
+        x = x.transpose(1, 2).reshape(-1, self.H_sp* self.W_sp, C)
+
+        if attn_mask_stripes is not None:
+            mask = attn_mask_stripes.transpose(1, 2).reshape(-1, self.H_sp* self.W_sp, 1)
+        
+        ### Window2Img
+        x = windows2img(x, self.H_sp, self.W_sp, H, W).view(B, -1, C)  # B H W C
+        
+        if mask is not None:
+            mask = windows2img(mask, self.H_sp, self.W_sp, H, W).view(B, -1, 1)  # B H W C
+
+        return x, mask
+
+
+@persistence.persistent_class
+class CSWinBlock(nn.Module):
+    def __init__(self, dim, reso, num_heads,
+                 split_size=7, mlp_ratio=4., qkv_bias=False, qk_scale=None,
+                 drop=0., attn_drop=0., drop_path=0.,
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm,
+                 mid_stage=False):
+        super().__init__()
+        self.dim = dim
+        self.num_heads = num_heads
+        self.patches_resolution = reso
+        self.split_size = split_size
+        self.mlp_ratio = mlp_ratio
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.norm1 = norm_layer(dim)
+
+        if self.patches_resolution == split_size:
+            mid_stage = True
+        if mid_stage:
+            self.branch_num = 1
+        else:
+            self.branch_num = 2
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(drop)
+        
+        if mid_stage:
+            self.attns = nn.ModuleList([
+                LePEAttention(
+                    dim, resolution=self.patches_resolution, idx = -1,
+                    split_size=split_size, num_heads=num_heads, dim_out=dim,
+                    qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+                for i in range(self.branch_num)])
+        else:
+            self.attns = nn.ModuleList([
+                LePEAttention(
+                    dim//2, resolution=self.patches_resolution, idx = i,
+                    split_size=split_size, num_heads=num_heads//2, dim_out=dim//2,
+                    qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+                for i in range(self.branch_num)])
+        
+
+        mlp_hidden_dim = int(dim * mlp_ratio)
+
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
+        self.norm2 = norm_layer(dim)
+
+    # def update_mask_windows(self, mask=None):
+    #     if mask is not None:
+    #         B, L, _ = mask.shape
+    #         H = W = int(np.sqrt(L))
+
+    #         mask_windows = window_partition(mask.view(B, H, W, 1), self.split_size).view(-1, self.split_size * self.split_size, 1)
+
+    #         with torch.no_grad():
+    #             mask_windows = torch.clamp(torch.sum(mask_windows, dim=1, keepdim=True), 0, 1).repeat(1, self.split_size * self.split_size, 1)
+
+    #         mask = window_reverse(mask_windows.view(-1, self.split_size, self.split_size, 1), self.split_size, H, W).view(B, H * W, 1)
+
+    #     return mask
+        
+    def forward(self, x, mask=None):
+        """
+        x: B, H*W, C
+        """
+
+        H = W = self.patches_resolution
+        B, L, C = x.shape
+        assert L == H * W, "flatten img_tokens has wrong size"
+        img = self.norm1(x)
+        qkv = self.qkv(img).reshape(B, -1, 3, C).permute(2, 0, 1, 3)
+
+        if self.branch_num == 2:
+            x1, mask1 = self.attns[0](qkv[:,:,:,:C//2], mask)
+            x2, mask2 = self.attns[1](qkv[:,:,:,C//2:], mask)
+            
+            attened_x = torch.cat([x1,x2], dim=2)
+            if mask1 is not None and mask2 is not None:
+                mask = torch.clamp(mask1 + mask2, 0, 1)
+        else:
+            attened_x, mask = self.attns[0](qkv, mask)
+
+        # Updating mask
+        # mask = self.update_mask_windows(mask)
+
+        attened_x = self.proj(attened_x)
+        x = x + self.drop_path(attened_x)
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+        return x, mask
+
 
 @persistence.persistent_class
 class BasicLayer(nn.Module):
@@ -370,6 +586,7 @@ class BasicLayer(nn.Module):
         depth (int): Number of blocks.
         num_heads (int): Number of attention heads.
         window_size (int): Local window size.
+        split_size (int): Stripes width.
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
@@ -381,9 +598,9 @@ class BasicLayer(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
     """
 
-    def __init__(self, dim, input_resolution, depth, num_heads, window_size, down_ratio=1,
+    def __init__(self, dim, input_resolution, depth, num_heads, split_size, down_ratio=1,
                  mlp_ratio=2., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False):
+                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False, mid_stage=False):
 
         super().__init__()
         self.dim = dim
@@ -399,15 +616,22 @@ class BasicLayer(nn.Module):
             self.downsample = None
 
         # build blocks
+        # self.blocks = nn.ModuleList([
+        #     SwinTransformerBlock(dim=dim, input_resolution=input_resolution,
+        #                          num_heads=num_heads, down_ratio=down_ratio, window_size=window_size,
+        #                          shift_size=0 if (i % 2 == 0) else window_size // 2,
+        #                          mlp_ratio=mlp_ratio,
+        #                          qkv_bias=qkv_bias, qk_scale=qk_scale,
+        #                          drop=drop, attn_drop=attn_drop,
+        #                          drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+        #                          norm_layer=norm_layer)
+        #     for i in range(depth)])
+
         self.blocks = nn.ModuleList([
-            SwinTransformerBlock(dim=dim, input_resolution=input_resolution,
-                                 num_heads=num_heads, down_ratio=down_ratio, window_size=window_size,
-                                 shift_size=0 if (i % 2 == 0) else window_size // 2,
-                                 mlp_ratio=mlp_ratio,
-                                 qkv_bias=qkv_bias, qk_scale=qk_scale,
-                                 drop=drop, attn_drop=attn_drop,
-                                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                 norm_layer=norm_layer)
+            CSWinBlock(dim=dim, reso=input_resolution[0], num_heads=num_heads,
+                       split_size=split_size, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
+                       drop=drop, attn_drop=attn_drop, drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                       norm_layer=norm_layer, mid_stage=mid_stage)
             for i in range(depth)])
 
         self.conv = Conv2dLayerPartial(in_channels=dim, out_channels=dim, kernel_size=3, activation='lrelu')
@@ -418,9 +642,9 @@ class BasicLayer(nn.Module):
         identity = x
         for blk in self.blocks:
             if self.use_checkpoint:
-                x, mask = checkpoint.checkpoint(blk, x, x_size, mask)
+                x, mask = checkpoint.checkpoint(blk, x, mask)
             else:
-                x, mask = blk(x, x_size, mask)
+                x, mask = blk(x, mask)
         if mask is not None:
             mask = token2feature(mask, x_size)
         x, mask = self.conv(token2feature(x, x_size), mask)
@@ -715,7 +939,8 @@ class FirstStage(nn.Module):
         depths = [2, 3, 4, 3, 2]
         ratios = [1, 1/2, 1/2, 2, 2]
         num_heads = 6
-        window_sizes = [8, 16, 16, 16, 8]
+        # window_sizes = [8, 16, 16, 16, 8]
+        split_sizes = [8, 16, 16, 16, 8]
         drop_path_rate = 0.1
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
@@ -730,8 +955,8 @@ class FirstStage(nn.Module):
                 merge = None
             self.tran.append(
                 BasicLayer(dim=dim, input_resolution=[res, res], depth=depth, num_heads=num_heads,
-                           window_size=window_sizes[i], drop_path=dpr[sum(depths[:i]):sum(depths[:i + 1])],
-                           downsample=merge)
+                           split_size=split_sizes[i], drop_path=dpr[sum(depths[:i]):sum(depths[:i + 1])],
+                           downsample=merge, mid_stage=True if i == len(depths)//2 else False)
             )
 
         # global style
