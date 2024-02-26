@@ -1,0 +1,9 @@
+#!/bin/sh
+#SBATCH -w gpu01 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=5GB -J gen-MAT -o /home/nnthao/lntuong/FDA-v6/std/gen-out -e /home/nnthao/lntuong/FDA-v6/std/gen-err --time=15
+
+cd ~/lntuong/FDA-v6
+
+srun python generate_image.py \
+    --network /media/nnthao/MAT/saved_model/good_cswint_model/11-train240_2400-best240_2400-resuming_best10-13h16m/network-snapshot-000240_2400.pkl \
+    --dpath /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/ \
+    --outdir /media/nnthao/MAT/Data/CelebA-HQ/cswintv6_samples
