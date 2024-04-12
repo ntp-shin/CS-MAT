@@ -1,0 +1,283 @@
+Start
+
+Training options:
+{
+  "num_gpus": 1,
+  "image_snapshot_ticks": 10,
+  "network_snapshot_ticks": 10,
+  "metrics": [
+    "fid2993_full"
+  ],
+  "random_seed": 0,
+  "training_set_kwargs": {
+    "class_name": "datasets.dataset_512.ImageFolderMaskDataset",
+    "path": "/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img",
+    "use_labels": false,
+    "max_size": 27007,
+    "xflip": true,
+    "resolution": 512
+  },
+  "val_set_kwargs": {
+    "class_name": "datasets.dataset_512.ImageFolderMaskDataset",
+    "path": "/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img",
+    "use_labels": false,
+    "max_size": 2993,
+    "xflip": false,
+    "resolution": 512
+  },
+  "data_loader_kwargs": {
+    "pin_memory": true,
+    "num_workers": 3,
+    "prefetch_factor": 2
+  },
+  "G_kwargs": {
+    "class_name": "networks.mat.Generator",
+    "z_dim": 512,
+    "w_dim": 512,
+    "mapping_kwargs": {
+      "num_layers": 8
+    },
+    "synthesis_kwargs": {
+      "channel_base": 32768,
+      "channel_max": 512
+    }
+  },
+  "D_kwargs": {
+    "class_name": "networks.mat.Discriminator",
+    "channel_base": 32768,
+    "channel_max": 512,
+    "mbstd_group_size": 8
+  },
+  "G_opt_kwargs": {
+    "class_name": "torch.optim.Adam",
+    "lr": 0.001,
+    "betas": [
+      0,
+      0.99
+    ],
+    "eps": 1e-08
+  },
+  "D_opt_kwargs": {
+    "class_name": "torch.optim.Adam",
+    "lr": 0.001,
+    "betas": [
+      0,
+      0.99
+    ],
+    "eps": 1e-08
+  },
+  "loss_kwargs": {
+    "class_name": "losses.loss.TwoStageLoss",
+    "r1_gamma": 10,
+    "pcp_ratio": 0.1,
+    "pl_weight": 0,
+    "truncation_psi": 0.5,
+    "style_mixing_prob": 0.5
+  },
+  "total_kimg": 600,
+  "batch_size": 4,
+  "batch_gpu": 4,
+  "ema_kimg": 10,
+  "ema_rampup": null,
+  "run_dir": "/media/nnthao/MAT/saved_model/cmat3/00012-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch4-tc0.5-sm0.5-ema10-noaug"
+}
+
+Output directory:   /media/nnthao/MAT/saved_model/cmat3/00012-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch4-tc0.5-sm0.5-ema10-noaug
+Training data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img
+Training duration:  600 kimg
+Number of GPUs:     1
+Number of images:   27007
+Image resolution:   512
+Conditional model:  False
+Dataset x-flips:    True
+
+Validation options:
+Validation data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img
+Number of images:   2993
+Image resolution:   512
+Conditional model:  False
+Dataset x-flips:    False
+
+Creating output directory...
+Launching processes...
+Loading training set...
+
+Num images:  54014
+Image shape: [3, 512, 512]
+Label shape: [0]
+
+Constructing networks...
+Setting up PyTorch plugin "bias_act_plugin"... Done.
+Setting up PyTorch plugin "upfirdn2d_plugin"... Done.
+
+Generator                            Parameters  Buffers  Output shape        Datatype
+---                                  ---         ---      ---                 ---     
+mapping.fc0                          262656      -        [4, 512]            float32 
+mapping.fc1                          262656      -        [4, 512]            float32 
+mapping.fc2                          262656      -        [4, 512]            float32 
+mapping.fc3                          262656      -        [4, 512]            float32 
+mapping.fc4                          262656      -        [4, 512]            float32 
+mapping.fc5                          262656      -        [4, 512]            float32 
+mapping.fc6                          262656      -        [4, 512]            float32 
+mapping.fc7                          262656      -        [4, 512]            float32 
+mapping                              -           512      [4, 12, 512]        float32 
+synthesis.first_stage.conv_first:0   6660        16       [4, 180, 512, 512]  float32 
+synthesis.first_stage.conv_first:1   -           -        [4, 180, 512, 512]  float32 
+synthesis.first_stage.enc_conv.0:0   291780      16       [4, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.0:1   -           -        [4, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.1:0   291780      16       [4, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.1:1   -           -        [4, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.2:0   291780      16       [4, 180, 64, 64]    float32 
+synthesis.first_stage.enc_conv.2:1   -           -        [4, 180, 64, 64]    float32 
+synthesis.first_stage.tran.0:0       1335060     262160   [4, 4096, 180]      float32 
+synthesis.first_stage.tran.0:1       -           -        [4, 4096, 180]      float32 
+synthesis.first_stage.tran.1:0       2148480     262176   [4, 1024, 180]      float32 
+synthesis.first_stage.tran.1:1       -           -        [4, 1024, 180]      float32 
+synthesis.first_stage.tran.2:0       2670120     32       [4, 256, 180]       float32 
+synthesis.first_stage.tran.2:1       -           -        [4, 256, 180]       float32 
+synthesis.first_stage.ws_style       92340       -        [4, 180]            float32 
+synthesis.first_stage.to_square      46336       -        [4, 256]            float32 
+synthesis.first_stage.down_conv      1167120     64       [4, 180, 1, 1]      float32 
+synthesis.first_stage.to_style       65160       -        [4, 360]            float32 
+synthesis.first_stage.tran.3:0       2148480     262176   [4, 1024, 180]      float32 
+synthesis.first_stage.tran.3:1       -           -        [4, 1024, 180]      float32 
+synthesis.first_stage.tran.4:0       1626840     262176   [4, 4096, 180]      float32 
+synthesis.first_stage.tran.4:1       -           -        [4, 4096, 180]      float32 
+synthesis.first_stage.dec_conv.0:0   876243      64       [4, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.0:1   -           -        [4, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.1:0   876243      64       [4, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.1:1   -           -        [4, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.2:0   876243      64       [4, 180, 512, 512]  float32 
+synthesis.first_stage.dec_conv.2:1   -           -        [4, 180, 512, 512]  float32 
+synthesis.first_stage                -           -        [4, 3, 512, 512]    float32 
+synthesis.enc.EncConv_Block_512x512  37440       32       [4, 64, 512, 512]   float32 
+synthesis.enc.EncConv_Block_256x256  221440      32       [4, 128, 256, 256]  float32 
+synthesis.enc.EncConv_Block_128x128  885248      32       [4, 256, 128, 128]  float32 
+synthesis.enc.EncConv_Block_64x64    3539968     32       [4, 512, 64, 64]    float32 
+synthesis.enc.EncConv_Block_32x32    4719616     32       [4, 512, 32, 32]    float32 
+synthesis.enc.EncConv_Block_16x16    4719616     32       [4, 512, 16, 16]    float32 
+synthesis.to_square                  131328      -        [4, 256]            float32 
+synthesis.to_style.conv              7079424     48       [4, 512, 2, 2]      float32 
+synthesis.to_style.pool              -           -        [4, 512, 1, 1]      float32 
+synthesis.to_style.fc                525312      -        [4, 1024]           float32 
+synthesis.dec.Dec_16x16:0            6295044     320      [4, 512, 16, 16]    float32 
+synthesis.dec.Dec_16x16:1            -           -        [4, 512, 16, 16]    float32 
+synthesis.dec.Dec_32x32:0            7081989     2112     [4, 512, 32, 32]    float32 
+synthesis.dec.Dec_32x32:1            -           -        [4, 512, 32, 32]    float32 
+synthesis.dec.Dec_64x64:0            7081989     8256     [4, 512, 64, 64]    float32 
+synthesis.dec.Dec_64x64:1            -           -        [4, 512, 64, 64]    float32 
+synthesis.dec.Dec_128x128:0          3344645     32832    [4, 256, 128, 128]  float32 
+synthesis.dec.Dec_128x128:1          -           -        [4, 256, 128, 128]  float32 
+synthesis.dec.Dec_256x256:0          1229957     131136   [4, 128, 256, 256]  float32 
+synthesis.dec.Dec_256x256:1          -           -        [4, 128, 256, 256]  float32 
+synthesis.dec.Dec_512x512:0          504389      524352   [4, 64, 512, 512]   float32 
+synthesis.dec.Dec_512x512:1          -           -        [4, 64, 512, 512]   float32 
+synthesis                            -           -        [4, 3, 512, 512]    float32 
+---                                  ---         ---      ---                 ---     
+Total                                64309318    1748800  -                   -       
+
+
+Discriminator     Parameters  Buffers  Output shape        Datatype
+---               ---         ---      ---                 ---     
+Dis.0.conv        320         16       [4, 64, 512, 512]   float32 
+Dis.1.skip        8192        16       [4, 128, 256, 256]  float32 
+Dis.1.conv0       36928       16       [4, 64, 512, 512]   float32 
+Dis.1.conv1       73856       16       [4, 128, 256, 256]  float32 
+Dis.1             -           -        [4, 128, 256, 256]  float32 
+Dis.2.skip        32768       16       [4, 256, 128, 128]  float32 
+Dis.2.conv0       147584      16       [4, 128, 256, 256]  float32 
+Dis.2.conv1       295168      16       [4, 256, 128, 128]  float32 
+Dis.2             -           -        [4, 256, 128, 128]  float32 
+Dis.3.skip        131072      16       [4, 512, 64, 64]    float32 
+Dis.3.conv0       590080      16       [4, 256, 128, 128]  float32 
+Dis.3.conv1       1180160     16       [4, 512, 64, 64]    float32 
+Dis.3             -           -        [4, 512, 64, 64]    float32 
+Dis.4.skip        262144      16       [4, 512, 32, 32]    float32 
+Dis.4.conv0       2359808     16       [4, 512, 64, 64]    float32 
+Dis.4.conv1       2359808     16       [4, 512, 32, 32]    float32 
+Dis.4             -           -        [4, 512, 32, 32]    float32 
+Dis.5.skip        262144      16       [4, 512, 16, 16]    float32 
+Dis.5.conv0       2359808     16       [4, 512, 32, 32]    float32 
+Dis.5.conv1       2359808     16       [4, 512, 16, 16]    float32 
+Dis.5             -           -        [4, 512, 16, 16]    float32 
+Dis.6.skip        262144      16       [4, 512, 8, 8]      float32 
+Dis.6.conv0       2359808     16       [4, 512, 16, 16]    float32 
+Dis.6.conv1       2359808     16       [4, 512, 8, 8]      float32 
+Dis.6             -           -        [4, 512, 8, 8]      float32 
+Dis.7.skip        262144      16       [4, 512, 4, 4]      float32 
+Dis.7.conv0       2359808     16       [4, 512, 8, 8]      float32 
+Dis.7.conv1       2359808     16       [4, 512, 4, 4]      float32 
+Dis.7             -           -        [4, 512, 4, 4]      float32 
+Dis.8             -           -        [4, 513, 4, 4]      float32 
+Dis.9             2364416     16       [4, 512, 4, 4]      float32 
+fc0               4194816     -        [4, 512]            float32 
+fc1               513         -        [4, 1]              float32 
+Dis_stg1.0.conv   160         16       [4, 32, 512, 512]   float32 
+Dis_stg1.1.skip   2048        16       [4, 64, 256, 256]   float32 
+Dis_stg1.1.conv0  9248        16       [4, 32, 512, 512]   float32 
+Dis_stg1.1.conv1  18496       16       [4, 64, 256, 256]   float32 
+Dis_stg1.1        -           -        [4, 64, 256, 256]   float32 
+Dis_stg1.2.skip   8192        16       [4, 128, 128, 128]  float32 
+Dis_stg1.2.conv0  36928       16       [4, 64, 256, 256]   float32 
+Dis_stg1.2.conv1  73856       16       [4, 128, 128, 128]  float32 
+Dis_stg1.2        -           -        [4, 128, 128, 128]  float32 
+Dis_stg1.3.skip   32768       16       [4, 256, 64, 64]    float32 
+Dis_stg1.3.conv0  147584      16       [4, 128, 128, 128]  float32 
+Dis_stg1.3.conv1  295168      16       [4, 256, 64, 64]    float32 
+Dis_stg1.3        -           -        [4, 256, 64, 64]    float32 
+Dis_stg1.4.skip   65536       16       [4, 256, 32, 32]    float32 
+Dis_stg1.4.conv0  590080      16       [4, 256, 64, 64]    float32 
+Dis_stg1.4.conv1  590080      16       [4, 256, 32, 32]    float32 
+Dis_stg1.4        -           -        [4, 256, 32, 32]    float32 
+Dis_stg1.5.skip   65536       16       [4, 256, 16, 16]    float32 
+Dis_stg1.5.conv0  590080      16       [4, 256, 32, 32]    float32 
+Dis_stg1.5.conv1  590080      16       [4, 256, 16, 16]    float32 
+Dis_stg1.5        -           -        [4, 256, 16, 16]    float32 
+Dis_stg1.6.skip   65536       16       [4, 256, 8, 8]      float32 
+Dis_stg1.6.conv0  590080      16       [4, 256, 16, 16]    float32 
+Dis_stg1.6.conv1  590080      16       [4, 256, 8, 8]      float32 
+Dis_stg1.6        -           -        [4, 256, 8, 8]      float32 
+Dis_stg1.7.skip   65536       16       [4, 256, 4, 4]      float32 
+Dis_stg1.7.conv0  590080      16       [4, 256, 8, 8]      float32 
+Dis_stg1.7.conv1  590080      16       [4, 256, 4, 4]      float32 
+Dis_stg1.7        -           -        [4, 256, 4, 4]      float32 
+Dis_stg1.8        -           -        [4, 257, 4, 4]      float32 
+Dis_stg1.9        592384      16       [4, 256, 4, 4]      float32 
+fc0_stg1          1048832     -        [4, 256]            float32 
+fc1_stg1          257         -        [4, 1]              float32 
+---               ---         ---      ---                 ---     
+Total             36231618    736      -                   -       
+
+Setting up augmentation...
+Distributing across 1 GPUs...
+Setting up training phases...
+Exporting sample images...
+Initializing logs...
+Training for 600 kimg...
+
+Traceback (most recent call last):
+  File "train.py", line 648, in <module>
+    main() # pylint: disable=no-value-for-parameter
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1078, in main
+    rv = self.invoke(ctx)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/decorators.py", line 33, in new_func
+    return f(get_current_context(), *args, **kwargs)
+  File "train.py", line 641, in main
+    subprocess_fn(rank=0, args=args, temp_dir=temp_dir)
+  File "train.py", line 471, in subprocess_fn
+    training_loop.training_loop(rank=rank, **args)
+  File "/media/nnthao/lntuong/FDA/training/training_loop.py", line 326, in training_loop
+    loss.accumulate_gradients(phase=phase.name, real_img=real_img, mask=mask, real_c=real_c, gen_z=gen_z, gen_c=gen_c, sync=sync, gain=gain)
+  File "/media/nnthao/lntuong/FDA/losses/loss.py", line 92, in accumulate_gradients
+    loss_Gmain_all.mean().mul(gain).backward()
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/tensor.py", line 245, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/autograd/__init__.py", line 145, in backward
+    Variable._execution_engine.run_backward(
+RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [4, 180, 64, 64]], which is output 0 of ViewBackward, is at version 1; expected version 0 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).

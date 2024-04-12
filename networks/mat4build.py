@@ -127,7 +127,8 @@ class Conv2dLayerPartial(nn.Module):
                 return x, mask
             with torch.no_grad():
                 if self.transpose_stride == 1:
-                    update_mask = F.conv2d(mask, torch.abs(self.conv.weight), stride=self.stride, padding=self.padding)
+                    update_mask = F.pad(mask, (self.padding, self.padding, self.padding, self.padding), value=mask.max())
+                    update_mask = F.conv2d(update_mask, torch.abs(self.conv.weight), stride=self.stride)
                 if self.transpose_stride == 2:
                     update_mask = F.conv_transpose2d(mask, torch.abs(self.conv.weight), stride=self.transpose_stride)
                     update_mask = F.conv2d(update_mask, torch.ones(update_mask.shape[1], update_mask.shape[1], 2, 2).to('cpu' if update_mask.get_device() == -1 else update_mask.get_device()))
@@ -138,67 +139,6 @@ class Conv2dLayerPartial(nn.Module):
         else:
             x = self.conv(x)
             return x, None
-
-
-@persistence.persistent_class
-class FullSelfAttention(nn.Module):
-    def __init__(self, dim, reso, num_heads,
-                 qkv_bias=False, qk_scale=None,
-                 attn_drop=0., drop_path=0.):
-        super().__init__()
-
-        self.dim = dim
-        self.num_heads = num_heads
-        self.patches_resolution = reso
-        self.scale = qk_scale or (dim // num_heads) ** -0.5
-        
-        self.q = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.k = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.v = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.softmax = nn.Softmax(dim=-1)
-        self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
-    
-    def forward(self, x, mask):
-        """
-        x: B, H*W, C
-        """
-
-        H, W = self.patches_resolution[0], self.patches_resolution[1]
-        B, L, C = x.shape
-        assert L == H * W, "flatten img_tokens has wrong size"
-
-        updated = (torch.mean(mask, dim=-1, keepdim=True) > 0.) * 1.
-        norm_x = F.normalize(x, p=2.0, dim=-1)
-        q = self.q(norm_x).reshape(B, L, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-        k = self.k(norm_x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 3, 1)
-        v = self.v(x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-
-        with torch.no_grad():
-            q_m = (mask @ torch.abs(self.q.weight.transpose(1, 0))).reshape(B, L, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-            k_m = (mask @ torch.abs(self.k.weight.transpose(1, 0))).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 3, 1)
-            v_m = (mask @ torch.abs(self.v.weight.transpose(1, 0))).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-
-            q_m /= (1e-6 + torch.max(q_m, dim=2, keepdim=True)[0])
-            k_m /= (1e-6 + torch.max(k_m, dim=3, keepdim=True)[0])
-            v_m /= (1e-6 + torch.max(v_m, dim=2, keepdim=True)[0])
-
-        attn = ((q * q_m) @ (k * k_m)) * self.scale
-        attn = self.softmax(attn)
-
-        x = (attn @ (v * v_m)).transpose(1, 2).reshape(B, L, C) * updated
-        # x_features = x.permute(0, 2, 1).reshape(B, C, H, W)
-        # updating_x = (F.conv2d(x_features, torch.ones(x_features.shape[1], 1, 3, 3).to('cpu' if x_features.get_device() == -1 else x_features.get_device()), padding=1, groups=x_features.shape[1]) - x_features) / (3*3-1)
-        # x += updating_x.permute(0, 2, 3, 1).reshape(B, L, C) * (1 - updated)
-        x = self.proj(x)
-
-        # m = (attn @ v_m).transpose(1, 2).reshape(B, L, C) * updated
-        # m_features = m.permute(0, 2, 1).reshape(B, C, H, W)
-        # updating_m = (F.conv2d(m_features, torch.ones(m_features.shape[1], 1, 3, 3).to('cpu' if m_features.get_device() == -1 else m_features.get_device()), padding=1, groups=m_features.shape[1]) - m_features) / (3*3-1)
-        # m += updating_m.permute(0, 2, 3, 1).reshape(B, L, C) * (1 - updated)
-        # m = m @ torch.abs(self.proj.weight.transpose(1, 0))
-
-        # return x, m
-        return x
 
 attn_count = 0
 @persistence.persistent_class
@@ -266,8 +206,8 @@ class WindowAttention(nn.Module):
         B_, N, C = x.shape
         norm_x = F.normalize(x, p=2.0, dim=-1)
         updated = (torch.mean(mask_windows, dim=-1, keepdim=True) > 0.) * 1.
-        # print('updated', updated.mean())
-        # print('mask_windows', mask_windows.shape, mask_windows.min().item(), mask_windows.mean().item(), mask_windows.max().item())
+        print('updated', updated.mean())
+        print('mask_windows', mask_windows.shape, mask_windows.min().item(), mask_windows.mean().item(), mask_windows.max().item())
         L = int(B_/B * self.window_size[0] * self.window_size[1])
         H = W = int(np.sqrt(L))
         global attn_count
@@ -310,15 +250,15 @@ class WindowAttention(nn.Module):
             # save_feature_snapshot(torch.roll(window_reverse(k_m.permute(0, 3, 1, 2).reshape(B_, N, -1), self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'k_m{attn_count}')
             # save_feature_snapshot(torch.roll(window_reverse(v_m.permute(0, 2, 1, 3).reshape(B_, N, -1), self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'v_m{attn_count}')
 
-            # print('Attn')
+            print('Attn')
             # print(q.min().item(), q.mean().item(), q.max().item())
             # print(k.min().item(), k.mean().item(), k.max().item())
             # print(v.min().item(), v.mean().item(), v.max().item())
-            # print(q_m.min().item(), q_m.mean().item(), q_m.max().item())
-            # print(k_m.min().item(), k_m.mean().item(), k_m.max().item())
-            # print(v_m.min().item(), v_m.mean().item(), v_m.max().item())
-            # print('Attn')
-            # print()
+            print(q_m.min().item(), q_m.mean().item(), q_m.max().item())
+            print(k_m.min().item(), k_m.mean().item(), k_m.max().item())
+            print(v_m.min().item(), v_m.mean().item(), v_m.max().item())
+            print('Attn')
+            print()
 
         attn = ((q * q_m) @ (k * k_m)) * self.scale
 
@@ -336,30 +276,31 @@ class WindowAttention(nn.Module):
 
         attn = self.softmax(attn)
         x = (attn @ (v * v_m)).transpose(1, 2).reshape(B_, N, C) * updated
-        # print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
+        print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
         x_features = torch.roll(window_reverse(x, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3))
         updating_x = (F.conv2d(x_features, torch.ones(x_features.shape[1], 1, 3, 3).to('cpu' if x_features.get_device() == -1 else x_features.get_device()), padding=1, groups=x_features.shape[1]) - x_features) / (3*3-1)
         x += window_partition(torch.roll(updating_x, shifts=(-shift_size, -shift_size), dims=(2, 3)).permute(0, 2, 3, 1), self.window_size[0]).reshape(B_, -1, C) * (1 - updated)
-        # print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
+        print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
         x = self.proj(x)
-        # print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
-        # save_feature_snapshot(torch.roll(window_reverse(x, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'x_attn{attn_count}', is_m=False)
-        # print()
+        print('x', x.shape, x.min().item(), x.mean().item(), x.max().item())
+        save_feature_snapshot(torch.roll(window_reverse(x, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'x_attn{attn_count}', is_m=False)
+        print()
         with torch.no_grad():
             m = (attn @ v_m).transpose(1, 2).reshape(B_, N, C) * updated
-            # print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
+            print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
             m_features = torch.roll(window_reverse(m, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3))
             updating_m = (F.conv2d(m_features, torch.ones(m_features.shape[1], 1, 3, 3).to('cpu' if m_features.get_device() == -1 else m_features.get_device()), padding=1, groups=m_features.shape[1]) - m_features) / (3*3-1)
             m += window_partition(torch.roll(updating_m, shifts=(-shift_size, -shift_size), dims=(2, 3)).permute(0, 2, 3, 1), self.window_size[0]).reshape(B_, -1, C) * (1 - updated)
-            # print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
+            print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
             m = m @ torch.abs(self.proj.weight.transpose(1, 0))
+            m /= (1e-6 + torch.max(m, dim=1, keepdim=True)[0])
             # m = self.to_features(m, B_, B)
             # m = m / (1e-6 + torch.max(m, dim=2, keepdim=True)[0])
             # m = self.to_tokens(m)
-            # print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
-            # save_feature_snapshot(torch.roll(window_reverse(m, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'attn{attn_count}')
+            print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
+            save_feature_snapshot(torch.roll(window_reverse(m, self.window_size[0], H, W).permute(0, 3, 1, 2), shifts=(shift_size, shift_size), dims=(2, 3)), f'attn{attn_count}')
             attn_count += 1
-            # print()
+            print()
         return x, m
 
 swin_count = 0
@@ -398,29 +339,16 @@ class SwinTransformerBlock(nn.Module):
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
-        self.full_attn = FullSelfAttention(dim, reso=self.input_resolution,
-                                           num_heads=num_heads, qkv_bias=qkv_bias,
-                                           qk_scale=qk_scale, attn_drop=attn_drop,
-                                           drop_path=drop_path)
-
         if self.shift_size > 0:
             down_ratio = 1
         self.attn = WindowAttention(dim, window_size=to_2tuple(self.window_size), num_heads=num_heads,
                                     down_ratio=down_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop,
                                     proj_drop=drop)
 
-        # self.fuse1 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
-        # self.fuse2 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
+        self.fuse = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
 
         mlp_hidden_dim = int(dim * mlp_ratio)
-        # self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        # self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-
-        self.norm1 = norm_layer(dim)
-        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        
-        self.norm2 = norm_layer(dim, eps=1e-4)
-        self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
         if self.shift_size > 0:
             attn_mask = self.calculate_mask(self.input_resolution)
@@ -458,9 +386,7 @@ class SwinTransformerBlock(nn.Module):
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
 
-        fsa_x = self.full_attn(x, mask)  # Output of Full Self-Attn
-
-        shortcut = x.clone()
+        shortcut = x
         x = x.view(B, H, W, C)
         if mask is not None:
             mask = mask.view(B, H, W, C)
@@ -510,22 +436,9 @@ class SwinTransformerBlock(nn.Module):
         if mask is not None:
             mask = mask.view(B, H * W, C)
 
-        # print('Swin')
-        # print('fsa_x', fsa_x.min().item(), fsa_x.mean().item(), fsa_x.max().item())
-        # print('x', x.min().item(), x.mean().item(), x.max().item())
-
         # FFN
-        x = self.fuse1(torch.cat([shortcut, x], dim=-1))
-        x = self.mlp1(x)
-        x = self.fuse2(torch.cat([x, fsa_x], dim=-1))
-        x = self.mlp2(x)
-
-        # x = x + self.mlp1(self.norm1(shortcut + x)) + fsa_x
-        # x = x + self.mlp2(self.norm2(x))
-
-        # print('last x', x.min().item(), x.mean().item(), x.max().item())
-        # print('Swin')
-        # print()
+        x = self.fuse(torch.cat([shortcut, x], dim=-1))
+        x = self.mlp(x)
 
         # global swin_count
         # save_feature_snapshot(token2feature(x, x_size), f'swin_block{swin_count}', True, False)
@@ -640,11 +553,11 @@ class BasicLayer(nn.Module):
     def forward(self, x, x_size, mask=None):
         if self.downsample is not None:
             side = 'down' if isinstance(self.downsample, PatchMerging) else 'up'
-            # save_feature_snapshot(token2feature(x, x_size), f'x_b4_{side}{x_size[0]}', is_m=False)
-            # save_feature_snapshot(token2feature(mask, x_size), f'b4_{side}{x_size[0]}')
+            save_feature_snapshot(token2feature(x, x_size), f'x_b4_{side}{x_size[0]}', is_m=False)
+            save_feature_snapshot(token2feature(mask, x_size), f'b4_{side}{x_size[0]}')
             x, x_size, mask = self.downsample(x, x_size, mask)
-            # save_feature_snapshot(token2feature(x, x_size), f'x_af_{side}{x_size[0]}', is_m=False)
-            # save_feature_snapshot(token2feature(mask, x_size), f'af_{side}{x_size[0]}')
+            save_feature_snapshot(token2feature(x, x_size), f'x_af_{side}{x_size[0]}', is_m=False)
+            save_feature_snapshot(token2feature(mask, x_size), f'af_{side}{x_size[0]}')
         # if x_size[0] == 16:
         #     exit()
         identity = x
@@ -655,7 +568,7 @@ class BasicLayer(nn.Module):
                 x, mask = blk(x, x_size, mask)
         if mask is not None:
             mask = token2feature(mask, x_size)
-        x, mask = self.conv(token2feature(x, x_size), mask, post_tran_conv=True)
+        x, mask = self.conv(token2feature(x, x_size), mask)
         x = feature2token(x) + identity
         if mask is not None:
             mask = feature2token(mask)
@@ -983,24 +896,24 @@ class FirstStage(nn.Module):
             self.dec_conv.append(DecStyleBlock(res, dim, dim, activation, style_dim, use_noise, demodulate, img_channels))
 
     def forward(self, images_in, masks_in, ws, noise_mode='random'):
-        # PIL.Image.fromarray(((images_in+1)*127.5)[0].permute(1, 2, 0).detach().cpu().numpy().astype(np.uint8), 'RGB').save(f'{snapshot_path}image_in.png')
-        # PIL.Image.fromarray((masks_in * 255)[0][0].detach().cpu().numpy().astype(np.uint8), 'L').save(f'{snapshot_path}mask_in.png')
-        # print('Input')
-        # print(images_in.shape, images_in.min().item(), images_in.mean().item(), images_in.max().item())
-        # print(masks_in.shape, masks_in.min().item(), masks_in.mean().item(), masks_in.max().item())
-        # print('Input')
-        # print()
+        PIL.Image.fromarray(((images_in+1)*127.5)[0].permute(1, 2, 0).detach().cpu().numpy().astype(np.uint8), 'RGB').save(f'{snapshot_path}image_in.png')
+        PIL.Image.fromarray((masks_in * 255)[0][0].detach().cpu().numpy().astype(np.uint8), 'L').save(f'{snapshot_path}mask_in.png')
+        print('Input')
+        print(images_in.shape, images_in.min().item(), images_in.mean().item(), images_in.max().item())
+        print(masks_in.shape, masks_in.min().item(), masks_in.mean().item(), masks_in.max().item())
+        print('Input')
+        print()
         x = torch.cat([masks_in - 0.5, images_in * masks_in], dim=1)
 
         skips = []
         x, mask = self.conv_first(x, masks_in.repeat(1, 4, 1, 1))  # input size
-        # save_feature_snapshot(x, 'x_conv_first', is_m=False)
-        # save_feature_snapshot(mask, 'conv_first')
+        save_feature_snapshot(x, 'x_conv_first', is_m=False)
+        save_feature_snapshot(mask, 'conv_first')
         skips.append(x)
         for i, block in enumerate(self.enc_conv):  # input size to 64
             x, mask = block(x, mask)
-            # save_feature_snapshot(x, f'x_enc_conv{i}', is_m=False)
-            # save_feature_snapshot(mask, f'enc_conv{i}')
+            save_feature_snapshot(x, f'x_enc_conv{i}', is_m=False)
+            save_feature_snapshot(mask, f'enc_conv{i}')
             if i != len(self.enc_conv) - 1:
                 skips.append(x)
 
@@ -1027,16 +940,16 @@ class FirstStage(nn.Module):
                 gs = self.to_style(self.down_conv(token2feature(x, x_size)).flatten(start_dim=1))
                 style = torch.cat([gs, ws], dim=1)
 
-            # print('Tran')
-            # print(x.min().item(), x.mean().item(), x.max().item())
-            # print(mask.min().item(), mask.mean().item(), mask.max().item())
-            # print('Tran')
-            # print()
+            print('Tran')
+            print(x.min().item(), x.mean().item(), x.max().item())
+            print(mask.min().item(), mask.mean().item(), mask.max().item())
+            print('Tran')
+            print()
 
-            # _x = token2feature(x, x_size)
-            # _mask = token2feature(mask, x_size)
-            # save_feature_snapshot(_x, f'x_tran{i}', is_m=False)
-            # save_feature_snapshot(_mask, f'tran{i}')
+            _x = token2feature(x, x_size)
+            _mask = token2feature(mask, x_size)
+            save_feature_snapshot(_x, f'x_tran{i}', is_m=False)
+            save_feature_snapshot(_mask, f'tran{i}')
 
         x = token2feature(x, x_size).contiguous()
         img = None

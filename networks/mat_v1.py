@@ -139,67 +139,6 @@ class Conv2dLayerPartial(nn.Module):
             x = self.conv(x)
             return x, None
 
-
-@persistence.persistent_class
-class FullSelfAttention(nn.Module):
-    def __init__(self, dim, reso, num_heads,
-                 qkv_bias=False, qk_scale=None,
-                 attn_drop=0., drop_path=0.):
-        super().__init__()
-
-        self.dim = dim
-        self.num_heads = num_heads
-        self.patches_resolution = reso
-        self.scale = qk_scale or (dim // num_heads) ** -0.5
-        
-        self.q = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.k = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.v = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
-        self.softmax = nn.Softmax(dim=-1)
-        self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
-    
-    def forward(self, x, mask):
-        """
-        x: B, H*W, C
-        """
-
-        H, W = self.patches_resolution[0], self.patches_resolution[1]
-        B, L, C = x.shape
-        assert L == H * W, "flatten img_tokens has wrong size"
-
-        updated = (torch.mean(mask, dim=-1, keepdim=True) > 0.) * 1.
-        norm_x = F.normalize(x, p=2.0, dim=-1)
-        q = self.q(norm_x).reshape(B, L, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-        k = self.k(norm_x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 3, 1)
-        v = self.v(x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-
-        with torch.no_grad():
-            q_m = (mask @ torch.abs(self.q.weight.transpose(1, 0))).reshape(B, L, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-            k_m = (mask @ torch.abs(self.k.weight.transpose(1, 0))).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 3, 1)
-            v_m = (mask @ torch.abs(self.v.weight.transpose(1, 0))).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-
-            q_m /= (1e-6 + torch.max(q_m, dim=2, keepdim=True)[0])
-            k_m /= (1e-6 + torch.max(k_m, dim=3, keepdim=True)[0])
-            v_m /= (1e-6 + torch.max(v_m, dim=2, keepdim=True)[0])
-
-        attn = ((q * q_m) @ (k * k_m)) * self.scale
-        attn = self.softmax(attn)
-
-        x = (attn @ (v * v_m)).transpose(1, 2).reshape(B, L, C) * updated
-        # x_features = x.permute(0, 2, 1).reshape(B, C, H, W)
-        # updating_x = (F.conv2d(x_features, torch.ones(x_features.shape[1], 1, 3, 3).to('cpu' if x_features.get_device() == -1 else x_features.get_device()), padding=1, groups=x_features.shape[1]) - x_features) / (3*3-1)
-        # x += updating_x.permute(0, 2, 3, 1).reshape(B, L, C) * (1 - updated)
-        x = self.proj(x)
-
-        # m = (attn @ v_m).transpose(1, 2).reshape(B, L, C) * updated
-        # m_features = m.permute(0, 2, 1).reshape(B, C, H, W)
-        # updating_m = (F.conv2d(m_features, torch.ones(m_features.shape[1], 1, 3, 3).to('cpu' if m_features.get_device() == -1 else m_features.get_device()), padding=1, groups=m_features.shape[1]) - m_features) / (3*3-1)
-        # m += updating_m.permute(0, 2, 3, 1).reshape(B, L, C) * (1 - updated)
-        # m = m @ torch.abs(self.proj.weight.transpose(1, 0))
-
-        # return x, m
-        return x
-
 attn_count = 0
 @persistence.persistent_class
 class WindowAttention(nn.Module):
@@ -398,29 +337,16 @@ class SwinTransformerBlock(nn.Module):
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
-        self.full_attn = FullSelfAttention(dim, reso=self.input_resolution,
-                                           num_heads=num_heads, qkv_bias=qkv_bias,
-                                           qk_scale=qk_scale, attn_drop=attn_drop,
-                                           drop_path=drop_path)
-
         if self.shift_size > 0:
             down_ratio = 1
         self.attn = WindowAttention(dim, window_size=to_2tuple(self.window_size), num_heads=num_heads,
                                     down_ratio=down_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop,
                                     proj_drop=drop)
 
-        # self.fuse1 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
-        # self.fuse2 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
+        self.fuse = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
 
         mlp_hidden_dim = int(dim * mlp_ratio)
-        # self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        # self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-
-        self.norm1 = norm_layer(dim)
-        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        
-        self.norm2 = norm_layer(dim, eps=1e-4)
-        self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
         if self.shift_size > 0:
             attn_mask = self.calculate_mask(self.input_resolution)
@@ -458,9 +384,7 @@ class SwinTransformerBlock(nn.Module):
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
 
-        fsa_x = self.full_attn(x, mask)  # Output of Full Self-Attn
-
-        shortcut = x.clone()
+        shortcut = x
         x = x.view(B, H, W, C)
         if mask is not None:
             mask = mask.view(B, H, W, C)
@@ -510,22 +434,9 @@ class SwinTransformerBlock(nn.Module):
         if mask is not None:
             mask = mask.view(B, H * W, C)
 
-        # print('Swin')
-        # print('fsa_x', fsa_x.min().item(), fsa_x.mean().item(), fsa_x.max().item())
-        # print('x', x.min().item(), x.mean().item(), x.max().item())
-
         # FFN
-        x = self.fuse1(torch.cat([shortcut, x], dim=-1))
-        x = self.mlp1(x)
-        x = self.fuse2(torch.cat([x, fsa_x], dim=-1))
-        x = self.mlp2(x)
-
-        # x = x + self.mlp1(self.norm1(shortcut + x)) + fsa_x
-        # x = x + self.mlp2(self.norm2(x))
-
-        # print('last x', x.min().item(), x.mean().item(), x.max().item())
-        # print('Swin')
-        # print()
+        x = self.fuse(torch.cat([shortcut, x], dim=-1))
+        x = self.mlp(x)
 
         # global swin_count
         # save_feature_snapshot(token2feature(x, x_size), f'swin_block{swin_count}', True, False)
@@ -1033,8 +944,8 @@ class FirstStage(nn.Module):
             # print('Tran')
             # print()
 
-            # _x = token2feature(x, x_size)
-            # _mask = token2feature(mask, x_size)
+            _x = token2feature(x, x_size)
+            _mask = token2feature(mask, x_size)
             # save_feature_snapshot(_x, f'x_tran{i}', is_m=False)
             # save_feature_snapshot(_mask, f'tran{i}')
 

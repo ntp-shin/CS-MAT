@@ -1,0 +1,339 @@
+Start
+
+Training options:
+{
+  "num_gpus": 2,
+  "image_snapshot_ticks": 10,
+  "network_snapshot_ticks": 10,
+  "metrics": [
+    "fid2993_full"
+  ],
+  "random_seed": 0,
+  "training_set_kwargs": {
+    "class_name": "datasets.dataset_512.ImageFolderMaskDataset",
+    "path": "/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img",
+    "use_labels": false,
+    "max_size": 27007,
+    "xflip": true,
+    "resolution": 512
+  },
+  "val_set_kwargs": {
+    "class_name": "datasets.dataset_512.ImageFolderMaskDataset",
+    "path": "/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img",
+    "use_labels": false,
+    "max_size": 2993,
+    "xflip": false,
+    "resolution": 512
+  },
+  "data_loader_kwargs": {
+    "pin_memory": true,
+    "num_workers": 3,
+    "prefetch_factor": 2
+  },
+  "G_kwargs": {
+    "class_name": "networks.mat_v1.Generator",
+    "z_dim": 512,
+    "w_dim": 512,
+    "mapping_kwargs": {
+      "num_layers": 8
+    },
+    "synthesis_kwargs": {
+      "channel_base": 32768,
+      "channel_max": 512
+    }
+  },
+  "D_kwargs": {
+    "class_name": "networks.mat_v1.Discriminator",
+    "channel_base": 32768,
+    "channel_max": 512,
+    "mbstd_group_size": 8
+  },
+  "G_opt_kwargs": {
+    "class_name": "torch.optim.Adam",
+    "lr": 0.001,
+    "betas": [
+      0,
+      0.99
+    ],
+    "eps": 1e-08
+  },
+  "D_opt_kwargs": {
+    "class_name": "torch.optim.Adam",
+    "lr": 0.001,
+    "betas": [
+      0,
+      0.99
+    ],
+    "eps": 1e-08
+  },
+  "loss_kwargs": {
+    "class_name": "losses.loss.TwoStageLoss",
+    "r1_gamma": 10,
+    "pcp_ratio": 0.1,
+    "pl_weight": 0,
+    "truncation_psi": 0.5,
+    "style_mixing_prob": 0.5
+  },
+  "total_kimg": 1200,
+  "batch_size": 16,
+  "batch_gpu": 8,
+  "ema_kimg": 10,
+  "ema_rampup": null,
+  "resume_pkl": "/media/nnthao/MAT/saved_model/cmat/00009-CelebA-HQ-img-mirror-celeba512-mat_v1-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl",
+  "ada_kimg": 100,
+  "run_dir": "/media/nnthao/MAT/saved_model/cmat/00013-CelebA-HQ-img-mirror-celeba512-mat_v1-lr0.001-TwoStageLoss-pr0.1-nopl-kimg1200-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom"
+}
+
+Output directory:   /media/nnthao/MAT/saved_model/cmat/00013-CelebA-HQ-img-mirror-celeba512-mat_v1-lr0.001-TwoStageLoss-pr0.1-nopl-kimg1200-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom
+Training data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img
+Training duration:  1200 kimg
+Number of GPUs:     2
+Number of images:   27007
+Image resolution:   512
+Conditional model:  False
+Dataset x-flips:    True
+
+Validation options:
+Validation data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img
+Number of images:   2993
+Image resolution:   512
+Conditional model:  False
+Dataset x-flips:    False
+
+Creating output directory...
+Launching processes...
+Loading training set...
+
+Num images:  54014
+Image shape: [3, 512, 512]
+Label shape: [0]
+
+Constructing networks...
+Resuming from "/media/nnthao/MAT/saved_model/cmat/00009-CelebA-HQ-img-mirror-celeba512-mat_v1-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch16-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000600.pkl"
+Setting up PyTorch plugin "bias_act_plugin"... Done.
+Setting up PyTorch plugin "upfirdn2d_plugin"... Done.
+
+Generator                            Parameters  Buffers  Output shape        Datatype
+---                                  ---         ---      ---                 ---     
+mapping.fc0                          262656      -        [8, 512]            float32 
+mapping.fc1                          262656      -        [8, 512]            float32 
+mapping.fc2                          262656      -        [8, 512]            float32 
+mapping.fc3                          262656      -        [8, 512]            float32 
+mapping.fc4                          262656      -        [8, 512]            float32 
+mapping.fc5                          262656      -        [8, 512]            float32 
+mapping.fc6                          262656      -        [8, 512]            float32 
+mapping.fc7                          262656      -        [8, 512]            float32 
+mapping                              -           512      [8, 12, 512]        float32 
+synthesis.first_stage.conv_first:0   6660        16       [8, 180, 512, 512]  float32 
+synthesis.first_stage.conv_first:1   -           -        [8, 180, 512, 512]  float32 
+synthesis.first_stage.enc_conv.0:0   291780      16       [8, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.0:1   -           -        [8, 180, 256, 256]  float32 
+synthesis.first_stage.enc_conv.1:0   291780      16       [8, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.1:1   -           -        [8, 180, 128, 128]  float32 
+synthesis.first_stage.enc_conv.2:0   291780      16       [8, 180, 64, 64]    float32 
+synthesis.first_stage.enc_conv.2:1   -           -        [8, 180, 64, 64]    float32 
+synthesis.first_stage.tran.0:0       942660      262160   [8, 4096, 180]      float32 
+synthesis.first_stage.tran.0:1       -           -        [8, 4096, 180]      float32 
+synthesis.first_stage.tran.1:0       1559880     262176   [8, 1024, 180]      float32 
+synthesis.first_stage.tran.1:1       -           -        [8, 1024, 180]      float32 
+synthesis.first_stage.tran.2:0       1885320     32       [8, 256, 180]       float32 
+synthesis.first_stage.tran.2:1       -           -        [8, 256, 180]       float32 
+synthesis.first_stage.ws_style       92340       -        [8, 180]            float32 
+synthesis.first_stage.to_square      46336       -        [8, 256]            float32 
+synthesis.first_stage.down_conv      1167120     64       [8, 180, 1, 1]      float32 
+synthesis.first_stage.to_style       65160       -        [8, 360]            float32 
+synthesis.first_stage.tran.3:0       1559880     262176   [8, 1024, 180]      float32 
+synthesis.first_stage.tran.3:1       -           -        [8, 1024, 180]      float32 
+synthesis.first_stage.tran.4:0       1234440     262176   [8, 4096, 180]      float32 
+synthesis.first_stage.tran.4:1       -           -        [8, 4096, 180]      float32 
+synthesis.first_stage.dec_conv.0:0   876243      64       [8, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.0:1   -           -        [8, 180, 128, 128]  float32 
+synthesis.first_stage.dec_conv.1:0   876243      64       [8, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.1:1   -           -        [8, 180, 256, 256]  float32 
+synthesis.first_stage.dec_conv.2:0   876243      64       [8, 180, 512, 512]  float32 
+synthesis.first_stage.dec_conv.2:1   -           -        [8, 180, 512, 512]  float32 
+synthesis.first_stage                -           -        [8, 3, 512, 512]    float32 
+synthesis.enc.EncConv_Block_512x512  37440       32       [8, 64, 512, 512]   float32 
+synthesis.enc.EncConv_Block_256x256  221440      32       [8, 128, 256, 256]  float32 
+synthesis.enc.EncConv_Block_128x128  885248      32       [8, 256, 128, 128]  float32 
+synthesis.enc.EncConv_Block_64x64    3539968     32       [8, 512, 64, 64]    float32 
+synthesis.enc.EncConv_Block_32x32    4719616     32       [8, 512, 32, 32]    float32 
+synthesis.enc.EncConv_Block_16x16    4719616     32       [8, 512, 16, 16]    float32 
+synthesis.to_square                  131328      -        [8, 256]            float32 
+synthesis.to_style.conv              7079424     48       [8, 512, 2, 2]      float32 
+synthesis.to_style.pool              -           -        [8, 512, 1, 1]      float32 
+synthesis.to_style.fc                525312      -        [8, 1024]           float32 
+synthesis.dec.Dec_16x16:0            6295044     320      [8, 512, 16, 16]    float32 
+synthesis.dec.Dec_16x16:1            -           -        [8, 512, 16, 16]    float32 
+synthesis.dec.Dec_32x32:0            7081989     2112     [8, 512, 32, 32]    float32 
+synthesis.dec.Dec_32x32:1            -           -        [8, 512, 32, 32]    float32 
+synthesis.dec.Dec_64x64:0            7081989     8256     [8, 512, 64, 64]    float32 
+synthesis.dec.Dec_64x64:1            -           -        [8, 512, 64, 64]    float32 
+synthesis.dec.Dec_128x128:0          3344645     32832    [8, 256, 128, 128]  float32 
+synthesis.dec.Dec_128x128:1          -           -        [8, 256, 128, 128]  float32 
+synthesis.dec.Dec_256x256:0          1229957     131136   [8, 128, 256, 256]  float32 
+synthesis.dec.Dec_256x256:1          -           -        [8, 128, 256, 256]  float32 
+synthesis.dec.Dec_512x512:0          504389      524352   [8, 64, 512, 512]   float32 
+synthesis.dec.Dec_512x512:1          -           -        [8, 64, 512, 512]   float32 
+synthesis                            -           -        [8, 3, 512, 512]    float32 
+---                                  ---         ---      ---                 ---     
+Total                                61562518    1748800  -                   -       
+
+
+Discriminator     Parameters  Buffers  Output shape        Datatype
+---               ---         ---      ---                 ---     
+Dis.0.conv        320         16       [8, 64, 512, 512]   float32 
+Dis.1.skip        8192        16       [8, 128, 256, 256]  float32 
+Dis.1.conv0       36928       16       [8, 64, 512, 512]   float32 
+Dis.1.conv1       73856       16       [8, 128, 256, 256]  float32 
+Dis.1             -           -        [8, 128, 256, 256]  float32 
+Dis.2.skip        32768       16       [8, 256, 128, 128]  float32 
+Dis.2.conv0       147584      16       [8, 128, 256, 256]  float32 
+Dis.2.conv1       295168      16       [8, 256, 128, 128]  float32 
+Dis.2             -           -        [8, 256, 128, 128]  float32 
+Dis.3.skip        131072      16       [8, 512, 64, 64]    float32 
+Dis.3.conv0       590080      16       [8, 256, 128, 128]  float32 
+Dis.3.conv1       1180160     16       [8, 512, 64, 64]    float32 
+Dis.3             -           -        [8, 512, 64, 64]    float32 
+Dis.4.skip        262144      16       [8, 512, 32, 32]    float32 
+Dis.4.conv0       2359808     16       [8, 512, 64, 64]    float32 
+Dis.4.conv1       2359808     16       [8, 512, 32, 32]    float32 
+Dis.4             -           -        [8, 512, 32, 32]    float32 
+Dis.5.skip        262144      16       [8, 512, 16, 16]    float32 
+Dis.5.conv0       2359808     16       [8, 512, 32, 32]    float32 
+Dis.5.conv1       2359808     16       [8, 512, 16, 16]    float32 
+Dis.5             -           -        [8, 512, 16, 16]    float32 
+Dis.6.skip        262144      16       [8, 512, 8, 8]      float32 
+Dis.6.conv0       2359808     16       [8, 512, 16, 16]    float32 
+Dis.6.conv1       2359808     16       [8, 512, 8, 8]      float32 
+Dis.6             -           -        [8, 512, 8, 8]      float32 
+Dis.7.skip        262144      16       [8, 512, 4, 4]      float32 
+Dis.7.conv0       2359808     16       [8, 512, 8, 8]      float32 
+Dis.7.conv1       2359808     16       [8, 512, 4, 4]      float32 
+Dis.7             -           -        [8, 512, 4, 4]      float32 
+Dis.8             -           -        [8, 513, 4, 4]      float32 
+Dis.9             2364416     16       [8, 512, 4, 4]      float32 
+fc0               4194816     -        [8, 512]            float32 
+fc1               513         -        [8, 1]              float32 
+Dis_stg1.0.conv   160         16       [8, 32, 512, 512]   float32 
+Dis_stg1.1.skip   2048        16       [8, 64, 256, 256]   float32 
+Dis_stg1.1.conv0  9248        16       [8, 32, 512, 512]   float32 
+Dis_stg1.1.conv1  18496       16       [8, 64, 256, 256]   float32 
+Dis_stg1.1        -           -        [8, 64, 256, 256]   float32 
+Dis_stg1.2.skip   8192        16       [8, 128, 128, 128]  float32 
+Dis_stg1.2.conv0  36928       16       [8, 64, 256, 256]   float32 
+Dis_stg1.2.conv1  73856       16       [8, 128, 128, 128]  float32 
+Dis_stg1.2        -           -        [8, 128, 128, 128]  float32 
+Dis_stg1.3.skip   32768       16       [8, 256, 64, 64]    float32 
+Dis_stg1.3.conv0  147584      16       [8, 128, 128, 128]  float32 
+Dis_stg1.3.conv1  295168      16       [8, 256, 64, 64]    float32 
+Dis_stg1.3        -           -        [8, 256, 64, 64]    float32 
+Dis_stg1.4.skip   65536       16       [8, 256, 32, 32]    float32 
+Dis_stg1.4.conv0  590080      16       [8, 256, 64, 64]    float32 
+Dis_stg1.4.conv1  590080      16       [8, 256, 32, 32]    float32 
+Dis_stg1.4        -           -        [8, 256, 32, 32]    float32 
+Dis_stg1.5.skip   65536       16       [8, 256, 16, 16]    float32 
+Dis_stg1.5.conv0  590080      16       [8, 256, 32, 32]    float32 
+Dis_stg1.5.conv1  590080      16       [8, 256, 16, 16]    float32 
+Dis_stg1.5        -           -        [8, 256, 16, 16]    float32 
+Dis_stg1.6.skip   65536       16       [8, 256, 8, 8]      float32 
+Dis_stg1.6.conv0  590080      16       [8, 256, 16, 16]    float32 
+Dis_stg1.6.conv1  590080      16       [8, 256, 8, 8]      float32 
+Dis_stg1.6        -           -        [8, 256, 8, 8]      float32 
+Dis_stg1.7.skip   65536       16       [8, 256, 4, 4]      float32 
+Dis_stg1.7.conv0  590080      16       [8, 256, 8, 8]      float32 
+Dis_stg1.7.conv1  590080      16       [8, 256, 4, 4]      float32 
+Dis_stg1.7        -           -        [8, 256, 4, 4]      float32 
+Dis_stg1.8        -           -        [8, 257, 4, 4]      float32 
+Dis_stg1.9        592384      16       [8, 256, 4, 4]      float32 
+fc0_stg1          1048832     -        [8, 256]            float32 
+fc1_stg1          257         -        [8, 1]              float32 
+---               ---         ---      ---                 ---     
+Total             36231618    736      -                   -       
+
+Setting up augmentation...
+Distributing across 2 GPUs...
+Setting up training phases...
+Exporting sample images...
+Initializing logs...
+Training for 1200 kimg...
+
+tick 0     kimg 0.0      time 1m 06s       sec/tick 11.9    sec/kimg 742.46  maintenance 54.6   cpumem 6.36   gpumem 31.18  augment 0.000
+Evaluating metrics...
+CAL AGAIN
+CAL AGAIN
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum G 567.9175720240148 9036.266181819292
+check-sum G 567.9175720240148 9036.266181819292
+SVM fitting ...
+uids 0.20314066154360177
+pids 0.0972268626795857
+{"results": {"fid2993_full": 5.356036758972467}, "metric": "fid2993_full", "total_time": 145.20616936683655, "total_time_str": "2m 25s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000000.pkl", "timestamp": 1712905856.0301018}
+tick 1     kimg 4.0      time 13m 10s      sec/tick 555.5   sec/kimg 138.87  maintenance 168.5  cpumem 7.53   gpumem 31.91  augment 0.000
+tick 2     kimg 8.0      time 22m 25s      sec/tick 554.7   sec/kimg 138.66  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 3     kimg 12.0     time 31m 40s      sec/tick 554.1   sec/kimg 138.54  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 4     kimg 16.0     time 40m 54s      sec/tick 554.2   sec/kimg 138.54  maintenance 0.2    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 5     kimg 20.0     time 50m 08s      sec/tick 554.1   sec/kimg 138.52  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 6     kimg 24.0     time 59m 22s      sec/tick 553.6   sec/kimg 138.39  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 7     kimg 28.0     time 1h 08m 36s   sec/tick 553.8   sec/kimg 138.45  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 8     kimg 32.0     time 1h 17m 49s   sec/tick 553.5   sec/kimg 138.37  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 9     kimg 36.0     time 1h 27m 02s   sec/tick 552.9   sec/kimg 138.22  maintenance 0.1    cpumem 7.53   gpumem 31.91  augment 0.000
+tick 10    kimg 40.0     time 1h 36m 15s   sec/tick 553.0   sec/kimg 138.26  maintenance 0.2    cpumem 7.53   gpumem 31.91  augment 0.000
+Evaluating metrics...
+TAKE TAKE/home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl 
+/home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum G 568.2278436298739 9125.023754960703
+check-sum G 568.2278436298739 9125.023754960703
+SVM fitting ...
+uids 0.21015703307718003
+pids 0.10858670230537922
+{"results": {"fid2993_full": 5.383100133402386}, "metric": "fid2993_full", "total_time": 117.02818393707275, "total_time_str": "1m 57s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000040.pkl", "timestamp": 1712911537.0916986}
+tick 11    kimg 44.0     time 1h 47m 49s   sec/tick 553.0   sec/kimg 138.26  maintenance 140.7  cpumem 7.86   gpumem 31.91  augment 0.000
+tick 12    kimg 48.0     time 1h 57m 04s   sec/tick 554.6   sec/kimg 138.65  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 13    kimg 52.0     time 2h 06m 18s   sec/tick 554.3   sec/kimg 138.59  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 14    kimg 56.0     time 2h 15m 32s   sec/tick 553.5   sec/kimg 138.36  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 15    kimg 60.0     time 2h 24m 45s   sec/tick 553.1   sec/kimg 138.29  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 16    kimg 64.0     time 2h 33m 58s   sec/tick 553.0   sec/kimg 138.25  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 17    kimg 68.0     time 2h 43m 12s   sec/tick 553.8   sec/kimg 138.44  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 18    kimg 72.0     time 2h 52m 26s   sec/tick 554.0   sec/kimg 138.50  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 19    kimg 76.0     time 3h 01m 40s   sec/tick 553.5   sec/kimg 138.38  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+tick 20    kimg 80.0     time 3h 10m 53s   sec/tick 552.6   sec/kimg 138.16  maintenance 0.1    cpumem 7.86   gpumem 31.91  augment 0.000
+Evaluating metrics...
+TAKETAKE  /home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl/home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl
+
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum G 567.9629880645734 8989.13060588133
+check-sum G 567.9629880645734 8989.13060588133
+SVM fitting ...
+uids 0.22235215502839956
+pids 0.10190444370197127
+{"results": {"fid2993_full": 5.227515791820512}, "metric": "fid2993_full", "total_time": 119.09425759315491, "total_time_str": "1m 59s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000080.pkl", "timestamp": 1712917216.2741663}
+tick 21    kimg 84.0     time 3h 22m 29s   sec/tick 553.4   sec/kimg 138.36  maintenance 142.6  cpumem 7.97   gpumem 31.91  augment 0.000
+tick 22    kimg 88.0     time 3h 31m 42s   sec/tick 553.2   sec/kimg 138.29  maintenance 0.1    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 23    kimg 92.0     time 3h 40m 57s   sec/tick 554.4   sec/kimg 138.59  maintenance 0.2    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 24    kimg 96.0     time 3h 53m 03s   sec/tick 725.8   sec/kimg 181.44  maintenance 0.3    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 25    kimg 100.0    time 4h 02m 16s   sec/tick 553.6   sec/kimg 138.41  maintenance 0.1    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 26    kimg 104.0    time 4h 11m 30s   sec/tick 553.7   sec/kimg 138.43  maintenance 0.2    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 27    kimg 108.0    time 4h 20m 44s   sec/tick 553.8   sec/kimg 138.45  maintenance 0.4    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 28    kimg 112.0    time 4h 29m 58s   sec/tick 553.4   sec/kimg 138.34  maintenance 0.3    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 29    kimg 116.0    time 4h 39m 12s   sec/tick 553.9   sec/kimg 138.46  maintenance 0.3    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 30    kimg 120.0    time 4h 48m 26s   sec/tick 553.1   sec/kimg 138.28  maintenance 0.1    cpumem 7.97   gpumem 31.91  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl
+TAKE /home/nnthao/.cache/dnnlib2/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-871859055e49b26f93953f8cc77f698d.pkl
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum Data 569.2022200890442 9203.187241488324
+check-sum G 567.6678127895563 8875.745460420618
+check-sum G 567.6678127895563 8875.745460420618
+SVM fitting ...
+uids 0.23120614767791514
+pids 0.10925492816572001
+{"results": {"fid2993_full": 5.266062551216134}, "metric": "fid2993_full", "total_time": 124.73550748825073, "total_time_str": "2m 05s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000120.pkl", "timestamp": 1712923075.0466483}
+tick 31    kimg 124.0    time 5h 00m 09s   sec/tick 554.9   sec/kimg 138.72  maintenance 148.5  cpumem 7.97   gpumem 31.91  augment 0.000
+tick 32    kimg 128.0    time 5h 09m 23s   sec/tick 554.3   sec/kimg 138.56  maintenance 0.2    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 33    kimg 132.0    time 5h 18m 38s   sec/tick 554.1   sec/kimg 138.52  maintenance 0.4    cpumem 7.97   gpumem 31.91  augment 0.000
+tick 34    kimg 136.0    time 5h 27m 53s   sec/tick 554.6   sec/kimg 138.64  maintenance 0.1    cpumem 7.97   gpumem 31.91  augment 0.000

@@ -1,0 +1,12 @@
+#!/bin/sh
+#SBATCH -w gpu05 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=10GB -J gen-MAT --time=12:00:00
+#SBATCH -o /home/nnthao/lntuong/FDA/std/gen-out -e /home/nnthao/lntuong/FDA/std/gen-err
+
+cd ~/lntuong/FDA
+
+srun python generate_image.py \
+    --network /home/nnthao/keep_space/cswint-network-snapshot-000440_7.64m_best.pkl \
+    --dpath /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/ \
+    --mpath /media/nnthao/MAT/Data/CelebA-HQ/masks_large_celebahq_val_512 \
+    --outdir /media/nnthao/MAT/Data/CelebA-HQ/test \
+    --seed 240
