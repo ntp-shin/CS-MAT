@@ -2,7 +2,7 @@ Start
 
 Training options:
 {
-  "num_gpus": 1,
+  "num_gpus": 2,
   "image_snapshot_ticks": 10,
   "network_snapshot_ticks": 10,
   "metrics": [
@@ -75,17 +75,17 @@ Training options:
     "style_mixing_prob": 0.5
   },
   "total_kimg": 600,
-  "batch_size": 4,
+  "batch_size": 8,
   "batch_gpu": 4,
   "ema_kimg": 10,
   "ema_rampup": null,
-  "run_dir": "/media/nnthao/MAT/saved_model/cmat3/00012-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch4-tc0.5-sm0.5-ema10-noaug"
+  "run_dir": "/media/nnthao/MAT/saved_model/cmat3/00006-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch8-tc0.5-sm0.5-ema10-noaug"
 }
 
-Output directory:   /media/nnthao/MAT/saved_model/cmat3/00012-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch4-tc0.5-sm0.5-ema10-noaug
+Output directory:   /media/nnthao/MAT/saved_model/cmat3/00006-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg600-batch8-tc0.5-sm0.5-ema10-noaug
 Training data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img
 Training duration:  600 kimg
-Number of GPUs:     1
+Number of GPUs:     2
 Number of images:   27007
 Image resolution:   512
 Conditional model:  False
@@ -249,35 +249,114 @@ fc1_stg1          257         -        [4, 1]              float32
 Total             36231618    736      -                   -       
 
 Setting up augmentation...
-Distributing across 1 GPUs...
+Distributing across 2 GPUs...
 Setting up training phases...
 Exporting sample images...
 Initializing logs...
 Training for 600 kimg...
 
-Traceback (most recent call last):
-  File "train.py", line 648, in <module>
-    main() # pylint: disable=no-value-for-parameter
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1157, in __call__
-    return self.main(*args, **kwargs)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1078, in main
-    rv = self.invoke(ctx)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1434, in invoke
-    return ctx.invoke(self.callback, **ctx.params)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 783, in invoke
-    return __callback(*args, **kwargs)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/decorators.py", line 33, in new_func
-    return f(get_current_context(), *args, **kwargs)
-  File "train.py", line 641, in main
-    subprocess_fn(rank=0, args=args, temp_dir=temp_dir)
-  File "train.py", line 471, in subprocess_fn
-    training_loop.training_loop(rank=rank, **args)
-  File "/media/nnthao/lntuong/FDA/training/training_loop.py", line 326, in training_loop
-    loss.accumulate_gradients(phase=phase.name, real_img=real_img, mask=mask, real_c=real_c, gen_z=gen_z, gen_c=gen_c, sync=sync, gain=gain)
-  File "/media/nnthao/lntuong/FDA/losses/loss.py", line 92, in accumulate_gradients
-    loss_Gmain_all.mean().mul(gain).backward()
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/tensor.py", line 245, in backward
-    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/torch/autograd/__init__.py", line 145, in backward
-    Variable._execution_engine.run_backward(
-RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [4, 180, 64, 64]], which is output 0 of ViewBackward, is at version 1; expected version 0 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).
+tick 0     kimg 0.0      time 1m 17s       sec/tick 8.1     sec/kimg 1010.77 maintenance 68.5   cpumem 5.46   gpumem 34.23  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum G 712.7520340052439 11515.517462431137
+check-sum G 712.7520340052439 11515.517462431137
+SVM fitting ...
+uids 0.0
+pids 0.0
+{"results": {"fid2993_full": 172.09428849730097}, "metric": "fid2993_full", "total_time": 136.12711787223816, "total_time_str": "2m 16s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000000.pkl", "timestamp": 1713253242.1985438}
+tick 1     kimg 4.0      time 16m 44s      sec/tick 768.8   sec/kimg 192.19  maintenance 158.3  cpumem 6.75   gpumem 31.53  augment 0.000
+tick 2     kimg 8.0      time 29m 35s      sec/tick 771.5   sec/kimg 192.86  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 3     kimg 12.0     time 42m 24s      sec/tick 768.8   sec/kimg 192.19  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 4     kimg 16.0     time 55m 15s      sec/tick 771.1   sec/kimg 192.76  maintenance 0.2    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 5     kimg 20.0     time 1h 08m 03s   sec/tick 767.7   sec/kimg 191.93  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 6     kimg 24.0     time 1h 20m 54s   sec/tick 771.1   sec/kimg 192.78  maintenance 0.2    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 7     kimg 28.0     time 1h 33m 42s   sec/tick 767.4   sec/kimg 191.86  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 8     kimg 32.0     time 1h 46m 31s   sec/tick 769.4   sec/kimg 192.35  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 9     kimg 36.0     time 1h 59m 21s   sec/tick 769.6   sec/kimg 192.40  maintenance 0.2    cpumem 6.75   gpumem 31.53  augment 0.000
+tick 10    kimg 40.0     time 2h 12m 11s   sec/tick 769.9   sec/kimg 192.48  maintenance 0.1    cpumem 6.75   gpumem 31.53  augment 0.000
+Evaluating metrics...
+TAKE TAKE/home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl 
+/home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum G 704.630626999244 12044.80239625142
+check-sum G 704.630626999244 12044.80239625142
+SVM fitting ...
+uids 0.0
+pids 0.0
+{"results": {"fid2993_full": 162.2716937932475}, "metric": "fid2993_full", "total_time": 132.15567088127136, "total_time_str": "2m 12s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000040.pkl", "timestamp": 1713261092.8031042}
+tick 11    kimg 44.0     time 2h 27m 30s   sec/tick 764.0   sec/kimg 191.01  maintenance 154.3  cpumem 7.15   gpumem 31.53  augment 0.000
+tick 12    kimg 48.0     time 2h 40m 11s   sec/tick 761.5   sec/kimg 190.37  maintenance 0.1    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 13    kimg 52.0     time 2h 52m 58s   sec/tick 766.4   sec/kimg 191.60  maintenance 0.1    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 14    kimg 56.0     time 3h 05m 45s   sec/tick 767.1   sec/kimg 191.78  maintenance 0.2    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 15    kimg 60.0     time 3h 18m 33s   sec/tick 767.8   sec/kimg 191.96  maintenance 0.2    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 16    kimg 64.0     time 3h 31m 20s   sec/tick 766.8   sec/kimg 191.70  maintenance 0.1    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 17    kimg 68.0     time 3h 44m 08s   sec/tick 767.8   sec/kimg 191.96  maintenance 0.1    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 18    kimg 72.0     time 3h 56m 54s   sec/tick 766.4   sec/kimg 191.59  maintenance 0.2    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 19    kimg 76.0     time 4h 09m 42s   sec/tick 767.8   sec/kimg 191.96  maintenance 0.1    cpumem 7.15   gpumem 31.53  augment 0.000
+tick 20    kimg 80.0     time 4h 22m 28s   sec/tick 766.0   sec/kimg 191.50  maintenance 0.2    cpumem 7.15   gpumem 31.53  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum G 741.8112960215426 12213.00881636084
+check-sum G 741.8112960215426 12213.00881636084
+SVM fitting ...
+uids 0.0
+pids 0.0
+{"results": {"fid2993_full": 177.5396147438614}, "metric": "fid2993_full", "total_time": 133.0688087940216, "total_time_str": "2m 13s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000080.pkl", "timestamp": 1713268911.8795335}
+tick 21    kimg 84.0     time 4h 37m 52s   sec/tick 766.9   sec/kimg 191.73  maintenance 156.1  cpumem 7.32   gpumem 31.53  augment 0.000
+tick 22    kimg 88.0     time 4h 50m 35s   sec/tick 763.6   sec/kimg 190.89  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 23    kimg 92.0     time 5h 03m 22s   sec/tick 766.5   sec/kimg 191.63  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 24    kimg 96.0     time 5h 16m 06s   sec/tick 763.9   sec/kimg 190.98  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 25    kimg 100.0    time 5h 28m 46s   sec/tick 760.2   sec/kimg 190.06  maintenance 0.2    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 26    kimg 104.0    time 5h 41m 27s   sec/tick 760.6   sec/kimg 190.15  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 27    kimg 108.0    time 5h 54m 07s   sec/tick 760.3   sec/kimg 190.07  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 28    kimg 112.0    time 6h 06m 48s   sec/tick 760.5   sec/kimg 190.12  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 29    kimg 116.0    time 6h 19m 35s   sec/tick 766.8   sec/kimg 191.70  maintenance 0.1    cpumem 7.32   gpumem 31.53  augment 0.000
+tick 30    kimg 120.0    time 6h 32m 23s   sec/tick 767.9   sec/kimg 191.97  maintenance 0.2    cpumem 7.32   gpumem 31.53  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum G 708.4319243486784 14922.09706641876
+SVM fitting ...
+check-sum G 708.4319243486784 14922.09706641876
+uids 0.0
+pids 0.0
+{"results": {"fid2993_full": 192.31243881887866}, "metric": "fid2993_full", "total_time": 131.73624801635742, "total_time_str": "2m 12s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000120.pkl", "timestamp": 1713276706.8406594}
+tick 31    kimg 124.0    time 6h 47m 48s   sec/tick 768.5   sec/kimg 192.12  maintenance 156.6  cpumem 7.38   gpumem 31.53  augment 0.000
+tick 32    kimg 128.0    time 7h 00m 32s   sec/tick 764.1   sec/kimg 191.02  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 33    kimg 132.0    time 7h 13m 20s   sec/tick 767.8   sec/kimg 191.96  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 34    kimg 136.0    time 7h 26m 07s   sec/tick 767.0   sec/kimg 191.75  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 35    kimg 140.0    time 7h 38m 52s   sec/tick 765.0   sec/kimg 191.25  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 36    kimg 144.0    time 7h 51m 40s   sec/tick 766.9   sec/kimg 191.73  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 37    kimg 148.0    time 8h 04m 25s   sec/tick 764.9   sec/kimg 191.22  maintenance 0.3    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 38    kimg 152.0    time 8h 17m 08s   sec/tick 763.3   sec/kimg 190.82  maintenance 0.4    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 39    kimg 156.0    time 8h 29m 51s   sec/tick 762.0   sec/kimg 190.50  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 40    kimg 160.0    time 8h 42m 32s   sec/tick 760.7   sec/kimg 190.19  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+Evaluating metrics...
+TAKETAKE  /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+/home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-9893544bcc0115ea88fff10154ded4b5.pkl
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum Data 569.2021427709863 9203.19839285542
+check-sum G 713.827433216645 15162.312517833643
+SVM fitting ...
+check-sum G 713.827433216645 15162.312517833643
+uids 0.0
+pids 0.0
+{"results": {"fid2993_full": 186.01691619040452}, "metric": "fid2993_full", "total_time": 132.90159583091736, "total_time_str": "2m 13s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000160.pkl", "timestamp": 1713284516.9324462}
+tick 41    kimg 164.0    time 8h 57m 56s   sec/tick 766.3   sec/kimg 191.58  maintenance 158.1  cpumem 7.38   gpumem 31.53  augment 0.000
+tick 42    kimg 168.0    time 9h 10m 43s   sec/tick 766.9   sec/kimg 191.73  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 43    kimg 172.0    time 9h 23m 24s   sec/tick 760.7   sec/kimg 190.16  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 44    kimg 176.0    time 9h 36m 07s   sec/tick 763.4   sec/kimg 190.86  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 45    kimg 180.0    time 9h 48m 52s   sec/tick 764.3   sec/kimg 191.07  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 46    kimg 184.0    time 10h 01m 40s  sec/tick 767.7   sec/kimg 191.93  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 47    kimg 188.0    time 10h 14m 26s  sec/tick 765.8   sec/kimg 191.44  maintenance 0.2    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 48    kimg 192.0    time 10h 27m 12s  sec/tick 766.5   sec/kimg 191.63  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000
+tick 49    kimg 196.0    time 10h 39m 59s  sec/tick 767.0   sec/kimg 191.75  maintenance 0.1    cpumem 7.38   gpumem 31.53  augment 0.000

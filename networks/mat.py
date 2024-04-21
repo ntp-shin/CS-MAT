@@ -127,7 +127,9 @@ class Conv2dLayerPartial(nn.Module):
                 return x, mask
             with torch.no_grad():
                 if self.transpose_stride == 1:
-                    update_mask = F.conv2d(mask, torch.abs(self.conv.weight), stride=self.stride, padding=self.padding)
+                    # update_mask = F.conv2d(mask, torch.abs(self.conv.weight), stride=self.stride, padding=self.padding)
+                    update_mask = F.pad(mask, (self.padding, self.padding, self.padding, self.padding), value=mask.max())
+                    update_mask = F.conv2d(update_mask, torch.abs(self.conv.weight), stride=self.stride)
                 if self.transpose_stride == 2:
                     update_mask = F.conv_transpose2d(mask, torch.abs(self.conv.weight), stride=self.transpose_stride)
                     update_mask = F.conv2d(update_mask, torch.ones(update_mask.shape[1], update_mask.shape[1], 2, 2).to('cpu' if update_mask.get_device() == -1 else update_mask.get_device()))
@@ -158,7 +160,7 @@ class FullSelfAttention(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
         self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
     
-    def forward(self, x, mask):
+    def forward(self, x, mask, attn_mask=None):
         """
         x: B, H*W, C
         """
@@ -183,6 +185,10 @@ class FullSelfAttention(nn.Module):
             v_m /= (1e-6 + torch.max(v_m, dim=2, keepdim=True)[0])
 
         attn = ((q * q_m) @ (k * k_m)) * self.scale
+
+        if attn_mask is not None:
+            attn = attn + attn_mask.unsqueeze(1)
+
         attn = self.softmax(attn)
 
         x = (attn @ (v * v_m)).transpose(1, 2).reshape(B, L, C) * updated
@@ -353,6 +359,7 @@ class WindowAttention(nn.Module):
             m += window_partition(torch.roll(updating_m, shifts=(-shift_size, -shift_size), dims=(2, 3)).permute(0, 2, 3, 1), self.window_size[0]).reshape(B_, -1, C) * (1 - updated)
             # print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
             m = m @ torch.abs(self.proj.weight.transpose(1, 0))
+            m /= (1e-6 + torch.max(m, dim=1, keepdim=True)[0])
             # m = self.to_features(m, B_, B)
             # m = m / (1e-6 + torch.max(m, dim=2, keepdim=True)[0])
             # m = self.to_tokens(m)
@@ -362,7 +369,7 @@ class WindowAttention(nn.Module):
             # print()
         return x, m
 
-swin_count = 0
+swin_count, attn_mask_count = 0, 0
 @persistence.persistent_class
 class SwinTransformerBlock(nn.Module):
     r""" Swin Transformer Block.
@@ -409,17 +416,24 @@ class SwinTransformerBlock(nn.Module):
                                     down_ratio=down_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop,
                                     proj_drop=drop)
 
+        mlp_hidden_dim = int(dim * mlp_ratio)
+
+        # v3.0
         # self.fuse1 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
         # self.fuse2 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
-
-        mlp_hidden_dim = int(dim * mlp_ratio)
         # self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
         # self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
 
+        # v3.1
+        # self.fuse = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
+        # self.norm = norm_layer(dim, eps=1e-4)
+        # self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
+        # self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
+
+        # From CSWinT-v6
         self.norm1 = norm_layer(dim)
-        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        
         self.norm2 = norm_layer(dim, eps=1e-4)
+        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
         self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
 
         if self.shift_size > 0:
@@ -458,9 +472,23 @@ class SwinTransformerBlock(nn.Module):
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
 
-        fsa_x = self.full_attn(x, mask)  # Output of Full Self-Attn
+        if self.attn_mask is not None:
+            attn_mask = self.attn_mask
+        else:
+            attn_mask = self.calculate_mask(x_size).to('cpu' if x.get_device() == -1 else x.get_device())
+        attn_mask = window_reverse(attn_mask[:, 0, :][None].reshape(-1, self.window_size, self.window_size, 1), self.window_size, H, W)
 
-        shortcut = x.clone()
+        # global attn_mask_count
+        # save_feature_snapshot(attn_mask.permute(0, 3, 1, 2), f'attn_mask{attn_mask_count}', False, False)
+        # attn_mask_count += 1
+
+        # print('attn_mask', attn_mask.mean())
+        attn_mask = attn_mask.reshape(1, L)
+        attn_mask = (attn_mask.unsqueeze(1) + attn_mask.unsqueeze(2))/2
+        # print('attn_mask', attn_mask.mean())
+        fsa_x = self.full_attn(x, mask, attn_mask=attn_mask)  # Output of Full Self-Attn
+
+        shortcut = x
         x = x.view(B, H, W, C)
         if mask is not None:
             mask = mask.view(B, H, W, C)
@@ -515,13 +543,22 @@ class SwinTransformerBlock(nn.Module):
         # print('x', x.min().item(), x.mean().item(), x.max().item())
 
         # FFN
-        x = self.fuse1(torch.cat([shortcut, x], dim=-1))
-        x = self.mlp1(x)
-        x = self.fuse2(torch.cat([x, fsa_x], dim=-1))
-        x = self.mlp2(x)
+        # v3.0
+        # x = self.fuse1(torch.cat([shortcut, x], dim=-1))
+        # x = self.mlp1(x)
+        # x = self.fuse2(torch.cat([x, fsa_x], dim=-1))
+        # x = self.mlp2(x)
 
-        # x = x + self.mlp1(self.norm1(shortcut + x)) + fsa_x
-        # x = x + self.mlp2(self.norm2(x))
+        # v3.1
+        # x = self.fuse(torch.cat([shortcut, x], dim=-1))
+        # x = self.mlp1(x)
+        # x = x + fsa_x
+        # x = x + self.mlp2(self.norm(x))
+
+        # From CSWinT-v6
+        x = shortcut + x
+        x = x + self.mlp1(self.norm1(x)) + fsa_x
+        x = x + self.mlp2(self.norm2(x))
 
         # print('last x', x.min().item(), x.mean().item(), x.max().item())
         # print('Swin')

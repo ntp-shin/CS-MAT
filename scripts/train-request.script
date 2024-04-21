@@ -1,15 +1,15 @@
 #!/bin/sh
-#SBATCH -w gpu01 --gpus=2 --cpus-per-gpu=24 --mem-per-gpu=20GB -J CMAT --time=2-00:00:00
+#SBATCH -w gpu01 --gres=gpu:2 --cpus-per-gpu=24 --mem-per-gpu=20GB -J CMAT --time=2-00:00:00
 #SBATCH -o /home/nnthao/lntuong/FDA/std/train-out -e /home/nnthao/lntuong/FDA/std/train-err
 
 cd ~/lntuong/FDA
 
 srun python -W ignore train.py \
-    --outdir=/media/nnthao/MAT/saved_model/cmat2 \
+    --outdir=/media/nnthao/MAT/saved_model/cmat_b8 \
     --gpus=1 \
     --snap=10 \
     --batch=8 \
-    --kimg=600 \
+    --kimg=240 \
     --metrics=fid2993_full \
     --data=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img \
     --data_val=/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img \
@@ -18,12 +18,13 @@ srun python -W ignore train.py \
     --cond=False \
     --cfg=celeba512 \
     --aug=noaug \
-    --generator=networks.mat_v2.Generator \
-    --discriminator=networks.mat_v2.Discriminator \
+    --generator=networks.mat_v1.Generator \
+    --discriminator=networks.mat_v1.Discriminator \
     --loss=losses.loss.TwoStageLoss \
     --pr=0.1 \
     --pl=False \
     --truncation=0.5 \
     --style_mix=0.5 \
     --ema=10 \
-    --lr=0.001
+    --lr=0.001 \
+    --resume=/media/nnthao/MAT/saved_model/cmat_b8/04-train360_2160-resuming03-15h06m/network-snapshot-000360.pkl

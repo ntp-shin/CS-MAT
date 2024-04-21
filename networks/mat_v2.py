@@ -127,6 +127,7 @@ class Conv2dLayerPartial(nn.Module):
                 return x, mask
             with torch.no_grad():
                 if self.transpose_stride == 1:
+                    # update_mask = F.conv2d(mask, torch.abs(self.conv.weight), stride=self.stride, padding=self.padding)
                     update_mask = F.pad(mask, (self.padding, self.padding, self.padding, self.padding), value=mask.max())
                     update_mask = F.conv2d(update_mask, torch.abs(self.conv.weight), stride=self.stride)
                 if self.transpose_stride == 2:
@@ -293,7 +294,7 @@ class WindowAttention(nn.Module):
             m += window_partition(torch.roll(updating_m, shifts=(-shift_size, -shift_size), dims=(2, 3)).permute(0, 2, 3, 1), self.window_size[0]).reshape(B_, -1, C) * (1 - updated)
             # print('m', m.shape, m.min().item(), m.mean().item(), m.max().item())
             m = m @ torch.abs(self.proj.weight.transpose(1, 0))
-            # m /= (1e-6 + torch.max(m, dim=1, keepdim=True)[0])
+            m /= (1e-6 + torch.max(m, dim=1, keepdim=True)[0])
             # m = self.to_features(m, B_, B)
             # m = m / (1e-6 + torch.max(m, dim=2, keepdim=True)[0])
             # m = self.to_tokens(m)
@@ -565,6 +566,7 @@ class BasicLayer(nn.Module):
         if mask is not None:
             mask = token2feature(mask, x_size)
         x, mask = self.conv(token2feature(x, x_size), mask, post_tran_conv=True)
+        # x, mask = self.conv(token2feature(x, x_size), mask)
         x = feature2token(x) + identity
         if mask is not None:
             mask = feature2token(mask)

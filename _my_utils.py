@@ -20,6 +20,84 @@ from datasets import mask_generator_512
 from metrics import metric_main
 from networks import mat
 
+def print_model_tensors_stats(model, named_model, detail=False, num_gpus=0):
+    ts, buff_ts = 0, 0
+    nts, buff_nts = 0, 0
+    ts_per_dvs, buff_ts_per_dvs = [0] * (num_gpus + 1), [0] * (num_gpus + 1)
+
+
+    print('PARAMS-MODEL') if named_model == None or named_model == '' else print('PARAMS::' + named_model)
+
+    for n, p in model.named_parameters():
+        if detail:
+            print(n)
+            print('\t- Params sum:', p.numel())
+            print('\t- params device:', p.get_device())
+        
+        ts_per_dvs[p.get_device()] += 1
+        if p.requires_grad:
+            ts += p.numel()
+        else:
+            nts += p.numel()
+    
+    if detail:
+        print()
+    
+    print('Trainable params:', ts)
+    print('Non-Trainable params:', nts)
+    print('Params-tensors per device:')
+
+    for i in range(len(ts_per_dvs)):
+        if i == len(ts_per_dvs) - 1:
+            print(f'- cpus\t{ts_per_dvs[i]}')
+            break
+
+        print(f'- cuda{i}\t{ts_per_dvs[i]}')
+
+
+    print('\nBUFF-MODEL') if named_model == None or named_model == '' else print('BUFF::' + named_model)
+
+    for buff_n, b in model.named_buffers():
+        if detail:
+            print(buff_n)
+            print('\t- Buff sum:', b.numel())
+            print('\t- Buff device:', b.get_device())
+        
+        buff_ts_per_dvs[b.get_device()] += 1
+        if b.requires_grad:
+            buff_ts += b.numel()
+        else:
+            buff_nts += b.numel()
+
+    if detail:
+        print()
+
+    print('Trainable buff:', buff_ts)
+    print('Non-Trainable buff:', buff_nts)
+    print('Buff-tensors per device:')
+    
+    for i in range(len(buff_ts_per_dvs)):
+        if i == len(buff_ts_per_dvs) - 1:
+            print(f'- cpus\t{buff_ts_per_dvs[i]}')
+            break
+
+        print(f'- cuda{i}\t{buff_ts_per_dvs[i]}')
+
+def print_modules_stats(model):
+    tran, full_attn, win_attn, fuse, mlp = 0, 0, 0, 0, 0
+    for n, p in model.named_parameters():
+        if '.tran' in n:
+            tran += p.numel()
+        if '.full_attn' in n:
+            full_attn += p.numel()
+        if '.attn' in n:
+            win_attn += p.numel()
+        if '.fuse' in n:
+            fuse += p.numel()
+        if '.mlp' in n:
+            mlp += p.numel()
+    print(f'Params stat:\n- tran\t{tran}\n- full_attn\t{full_attn}\n- win_attn\t{win_attn}\n- fuse\t{fuse}\n- mlp\t{mlp}')
+
 def build_model(res=512, c=0, img_channels=3, batch=1, device=torch.device('cuda:0'), network_pkl=None):
     initG_start_time = time.time()
     if network_pkl is not None:
@@ -51,12 +129,13 @@ def build_model(res=512, c=0, img_channels=3, batch=1, device=torch.device('cuda
     c_dim = torch.randn(batch, c).to(device)
 
     # misc.print_module_summary(G, [img, mask, z_dim, c_dim])
-    # print()
-    # print_model_tensors_stats(G, 'Generator', False, 1)
-    # print()
-    # print_model_tensors_stats(D, 'Discriminator', False, 1)
-    # print()
+    print()
+    print_model_tensors_stats(G, 'Generator', True, 1)
+    print()
+    print_model_tensors_stats(D, 'Discriminator', False, 1)
+    print()
 
+    print_modules_stats(G)
     # print('G size:', cal_model_size(G) / 1024**2, 'MB')
     # print('D size:', cal_model_size(D) / 1024**2, 'MB')
 
