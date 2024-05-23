@@ -1,6 +1,14 @@
-from _my_utils import fid_evaluating, build_model
-from evaluatoin import cal_fid_pids_uids
+from _my_utils import build_model
+from evaluatoin import cal_fid_pids_uids, cal_lpips, cal_psnr_ssim_l1
+import time
 
-# fid_evaluating('/media/nnthao/MAT/saved_model/good_cswint_model/11-train240_2400-best240_2400-resuming_best10-13h16m/network-snapshot-000240_2400.pkl')
-print(cal_fid_pids_uids.calculate_metrics('/media/nnthao/MAT/Data/CelebA-HQ/cswintv6_samples', '/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/'))
-# build_model()
+fpu_t = time.time()
+print(cal_fid_pids_uids.calculate_metrics('/media/nnthao/MAT/Data/CelebA-HQ/cswintv62_5m12_sgen_s240_samples', '/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/'))
+print('fpu_t', time.time() - fpu_t)
+
+# lpips_t = time.time()
+# print(cal_lpips.calculate_metrics('/media/nnthao/MAT/Data/CelebA-HQ/cswintv6_15r0_1200_samples', '/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/'))
+# print('lpips_t', time.time() - lpips_t)
+# psl_t = time.time()
+# print(cal_psnr_ssim_l1.calculate_metrics('/media/nnthao/MAT/Data/CelebA-HQ/cswintv6_15r0_1200_samples', '/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img/'))
+# print('psl_t', time.time() - psl_t)

@@ -167,6 +167,8 @@ class ImageFolderMaskDataset(Dataset):
         self._path = path
         self._zipfile = None
         self._hole_range = hole_range
+        self._allmask_fnames = {os.path.relpath(os.path.join(root, fname), start=self._path) for root, _dirs, files in os.walk('/media/nnthao/MAT/Data/CelebA-HQ/masks_large_celebahq_val_512') for fname in files}
+        self._mask_fnames = sorted(fname for fname in self._allmask_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
 
         if os.path.isdir(self._path):
             self._type = 'dir'
@@ -271,6 +273,7 @@ class ImageFolderMaskDataset(Dataset):
             assert image.ndim == 3 # CHW
             image = image[:, :, ::-1]
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
+        # mask = (np.array(PIL.Image.open('/media/nnthao/MAT/Data/CelebA-HQ/masks_large_celebahq_val_512/' + self._mask_fnames[self._raw_idx[idx]]))/255)[np.newaxis, ...].astype(np.float32)
         return image.copy(), mask, self.get_label(idx)
 
 

@@ -13,7 +13,7 @@ Training options:
     "class_name": "datasets.dataset_512.ImageFolderMaskDataset",
     "path": "/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img",
     "use_labels": false,
-    "max_size": 24183,
+    "max_size": 27007,
     "xflip": true,
     "resolution": 512
   },
@@ -31,7 +31,7 @@ Training options:
     "prefetch_factor": 2
   },
   "G_kwargs": {
-    "class_name": "networks.mat_v62.Generator",
+    "class_name": "networks.mat.Generator",
     "z_dim": 512,
     "w_dim": 512,
     "mapping_kwargs": {
@@ -43,7 +43,7 @@ Training options:
     }
   },
   "D_kwargs": {
-    "class_name": "networks.mat_v62.Discriminator",
+    "class_name": "networks.mat.Discriminator",
     "channel_base": 32768,
     "channel_max": 512,
     "mbstd_group_size": 8
@@ -79,16 +79,16 @@ Training options:
   "batch_gpu": 4,
   "ema_kimg": 10,
   "ema_rampup": null,
-  "resume_pkl": "/media/nnthao/MAT/checkpoint_model/cswint_v62/00001-CelebA-HQ-img-mirror-celeba512-mat_v62-lr0.001-TwoStageLoss-pr0.1-nopl-kimg320-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000120.pkl",
+  "resume_pkl": "/media/nnthao/MAT/saved_model/test_cswint_model/00017-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg480-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000480.pkl",
   "ada_kimg": 100,
-  "run_dir": "/media/nnthao/MAT/checkpoint_model/cswint_v62/00002-CelebA-HQ-img-mirror-celeba512-mat_v62-lr0.001-TwoStageLoss-pr0.1-nopl-kimg200-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom"
+  "run_dir": "/media/nnthao/MAT/saved_model/test_cswint_model/00025-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg200-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom"
 }
 
-Output directory:   /media/nnthao/MAT/checkpoint_model/cswint_v62/00002-CelebA-HQ-img-mirror-celeba512-mat_v62-lr0.001-TwoStageLoss-pr0.1-nopl-kimg200-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom
+Output directory:   /media/nnthao/MAT/saved_model/test_cswint_model/00025-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg200-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom
 Training data:      /media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-img
 Training duration:  200 kimg
 Number of GPUs:     2
-Number of images:   24183
+Number of images:   27007
 Image resolution:   512
 Conditional model:  False
 Dataset x-flips:    True
@@ -104,12 +104,12 @@ Creating output directory...
 Launching processes...
 Loading training set...
 
-Num images:  48366
+Num images:  54014
 Image shape: [3, 512, 512]
 Label shape: [0]
 
 Constructing networks...
-Resuming from "/media/nnthao/MAT/checkpoint_model/cswint_v62/00001-CelebA-HQ-img-mirror-celeba512-mat_v62-lr0.001-TwoStageLoss-pr0.1-nopl-kimg320-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000120.pkl"
+Resuming from "/media/nnthao/MAT/saved_model/test_cswint_model/00017-CelebA-HQ-img-mirror-celeba512-mat-lr0.001-TwoStageLoss-pr0.1-nopl-kimg480-batch8-tc0.5-sm0.5-ema10-noaug-resumecustom/network-snapshot-000480.pkl"
 Setting up PyTorch plugin "bias_act_plugin"... Done.
 Setting up PyTorch plugin "upfirdn2d_plugin"... Done.
 
@@ -132,17 +132,17 @@ synthesis.first_stage.enc_conv.1:0   291780      16       [4, 180, 128, 128]  fl
 synthesis.first_stage.enc_conv.1:1   -           -        [4, 180, 128, 128]  float32 
 synthesis.first_stage.enc_conv.2:0   291780      16       [4, 180, 64, 64]    float32 
 synthesis.first_stage.enc_conv.2:1   -           -        [4, 180, 64, 64]    float32 
-synthesis.first_stage.tran.0:0       1469340     16       [4, 4096, 180]      float32 
+synthesis.first_stage.tran.0:0       1340100     16       [4, 4096, 180]      float32 
 synthesis.first_stage.tran.0:1       -           -        [4, 4096, 180]      float32 
-synthesis.first_stage.tran.1:0       2349900     32       [4, 1024, 180]      float32 
+synthesis.first_stage.tran.1:0       2156040     32       [4, 1024, 180]      float32 
 synthesis.first_stage.tran.1:1       -           -        [4, 1024, 180]      float32 
-synthesis.first_stage.tran.2         2938680     32       [4, 256, 180]       float32 
+synthesis.first_stage.tran.2         2680200     32       [4, 256, 180]       float32 
 synthesis.first_stage.ws_style       92340       -        [4, 180]            float32 
 synthesis.first_stage.to_square      46336       -        [4, 256]            float32 
 synthesis.first_stage.down_conv      1167120     64       [4, 180, 1, 1]      float32 
 synthesis.first_stage.to_style       65160       -        [4, 360]            float32 
-synthesis.first_stage.tran.3         2349900     32       [4, 1024, 180]      float32 
-synthesis.first_stage.tran.4         1761120     32       [4, 4096, 180]      float32 
+synthesis.first_stage.tran.3         2156040     32       [4, 1024, 180]      float32 
+synthesis.first_stage.tran.4         1631880     32       [4, 4096, 180]      float32 
 synthesis.first_stage.dec_conv.0:0   876243      64       [4, 180, 128, 128]  float32 
 synthesis.first_stage.dec_conv.0:1   -           -        [4, 180, 128, 128]  float32 
 synthesis.first_stage.dec_conv.1:0   876243      64       [4, 180, 256, 256]  float32 
@@ -174,7 +174,7 @@ synthesis.dec.Dec_512x512:0          504389      524352   [4, 64, 512, 512]   fl
 synthesis.dec.Dec_512x512:1          -           -        [4, 64, 512, 512]   float32 
 synthesis                            -           -        [4, 3, 512, 512]    float32 
 ---                                  ---         ---      ---                 ---     
-Total                                65249278    700224   -                   -       
+Total                                64344598    700224   -                   -       
 
 
 Discriminator     Parameters  Buffers  Output shape        Datatype
@@ -255,34 +255,106 @@ Exporting sample images...
 Initializing logs...
 Training for 200 kimg...
 
-tick 0     kimg 0.0      time 1m 28s       sec/tick 8.8     sec/kimg 1102.87 maintenance 79.1   cpumem 6.56   gpumem 33.94  augment 0.000
+tick 0     kimg 0.0      time 1m 00s       sec/tick 8.6     sec/kimg 1077.64 maintenance 51.1   cpumem 6.35   gpumem 33.87  augment 0.000
 Evaluating metrics...
 TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
 TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
-check-sum Data 569.2021624256611 9203.20434771843
-check-sum Data 569.2021624256611 9203.20434771843
-check-sum G 572.4022673159916 9132.038430323566
-check-sum G 572.4022673159916 9132.038430323566
+check-sum Data 569.202191357265 9203.217768999863
+check-sum Data 569.202191357265 9203.217768999863
+check-sum G 569.4914212638507 8737.931745260616
+check-sum G 569.4914212638507 8737.931745260616
 SVM fitting ...
-uids 0.12128299365185435
-pids 0.03875709989976612
-{"results": {"fid2993_full": 6.9673373214475935}, "metric": "fid2993_full", "total_time": 123.21928572654724, "total_time_str": "2m 03s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000000.pkl", "timestamp": 1716407031.7249525}
-tick 1     kimg 4.0      time 15m 23s      sec/tick 687.1   sec/kimg 171.76  maintenance 148.1  cpumem 7.53   gpumem 32.63  augment 0.000
-tick 2     kimg 8.0      time 26m 49s      sec/tick 685.9   sec/kimg 171.48  maintenance 0.1    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 3     kimg 12.0     time 38m 15s      sec/tick 685.9   sec/kimg 171.48  maintenance 0.2    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 4     kimg 16.0     time 49m 41s      sec/tick 686.1   sec/kimg 171.53  maintenance 0.1    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 5     kimg 20.0     time 1h 01m 08s   sec/tick 686.2   sec/kimg 171.56  maintenance 0.2    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 6     kimg 24.0     time 1h 12m 34s   sec/tick 686.0   sec/kimg 171.50  maintenance 0.3    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 7     kimg 28.0     time 1h 24m 00s   sec/tick 685.7   sec/kimg 171.44  maintenance 0.6    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 8     kimg 32.0     time 1h 35m 27s   sec/tick 685.8   sec/kimg 171.46  maintenance 0.5    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 9     kimg 36.0     time 1h 46m 53s   sec/tick 685.8   sec/kimg 171.45  maintenance 0.3    cpumem 7.53   gpumem 32.63  augment 0.000
-tick 10    kimg 40.0     time 1h 58m 19s   sec/tick 685.6   sec/kimg 171.41  maintenance 0.3    cpumem 7.53   gpumem 32.63  augment 0.000
-Traceback (most recent call last):
-  File "train.py", line 648, in <module>
-    main() # pylint: disable=no-value-for-parameter
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1157, in __call__
-    return self.main(*args, **kwargs)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1078, in main
-    rv = self.invoke(ctx)
-  File "/media/nnthao/miniconda3/envs/MAT/lib/python3.8/site-packages/click/core.py", line 1434, in invoke
-    return ctx.invoke
+uids 0.1665552956899432
+pids 0.06314734380220514
+{"results": {"fid2993_full": 6.012798680465002}, "metric": "fid2993_full", "total_time": 121.45123481750488, "total_time_str": "2m 01s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000000.pkl", "timestamp": 1714018607.3173656}
+tick 1     kimg 4.0      time 15m 00s      sec/tick 694.2   sec/kimg 173.54  maintenance 146.5  cpumem 7.35   gpumem 32.54  augment 0.000
+tick 2     kimg 8.0      time 26m 33s      sec/tick 692.6   sec/kimg 173.15  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 3     kimg 12.0     time 38m 06s      sec/tick 692.8   sec/kimg 173.21  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 4     kimg 16.0     time 49m 39s      sec/tick 693.2   sec/kimg 173.30  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 5     kimg 20.0     time 1h 01m 13s   sec/tick 693.0   sec/kimg 173.26  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 6     kimg 24.0     time 1h 12m 46s   sec/tick 693.0   sec/kimg 173.24  maintenance 0.2    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 7     kimg 28.0     time 1h 24m 19s   sec/tick 692.9   sec/kimg 173.23  maintenance 0.2    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 8     kimg 32.0     time 1h 35m 52s   sec/tick 693.2   sec/kimg 173.31  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 9     kimg 36.0     time 1h 47m 26s   sec/tick 693.3   sec/kimg 173.33  maintenance 0.2    cpumem 7.35   gpumem 32.54  augment 0.000
+tick 10    kimg 40.0     time 1h 58m 59s   sec/tick 693.0   sec/kimg 173.25  maintenance 0.1    cpumem 7.35   gpumem 32.54  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pklTAKE
+ /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+check-sum Data 569.202191357265 9203.217768999863
+check-sum Data 569.202191357265 9203.217768999863
+check-sum G 569.7101093517737 8939.484166706445
+SVM fitting ...
+check-sum G 569.7101093517737 8939.484166706445
+uids 0.16137654527230205
+pids 0.05412629468760441
+{"results": {"fid2993_full": 6.006836506935026}, "metric": "fid2993_full", "total_time": 119.0917956829071, "total_time_str": "1m 59s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000040.pkl", "timestamp": 1714025683.4320817}
+tick 11    kimg 44.0     time 2h 12m 56s   sec/tick 693.3   sec/kimg 173.33  maintenance 143.7  cpumem 8.08   gpumem 32.54  augment 0.000
+tick 12    kimg 48.0     time 2h 24m 29s   sec/tick 693.1   sec/kimg 173.27  maintenance 0.2    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 13    kimg 52.0     time 2h 36m 02s   sec/tick 692.8   sec/kimg 173.21  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 14    kimg 56.0     time 2h 47m 35s   sec/tick 693.0   sec/kimg 173.25  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 15    kimg 60.0     time 2h 59m 08s   sec/tick 692.7   sec/kimg 173.19  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 16    kimg 64.0     time 3h 10m 41s   sec/tick 693.0   sec/kimg 173.26  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 17    kimg 68.0     time 3h 22m 14s   sec/tick 692.8   sec/kimg 173.21  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 18    kimg 72.0     time 3h 33m 47s   sec/tick 693.0   sec/kimg 173.24  maintenance 0.1    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 19    kimg 76.0     time 3h 45m 20s   sec/tick 693.1   sec/kimg 173.27  maintenance 0.2    cpumem 8.08   gpumem 32.54  augment 0.000
+tick 20    kimg 80.0     time 3h 56m 54s   sec/tick 693.0   sec/kimg 173.25  maintenance 0.2    cpumem 8.08   gpumem 32.54  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+check-sum Data 569.202191357265 9203.217768999863
+check-sum Data 569.202191357265 9203.217768999863
+check-sum G 567.6956841232045 8740.243228028628
+SVM fitting ...
+check-sum G 567.6956841232045 8740.243228028628
+uids 0.17139993317741398
+pids 0.06615436017373873
+{"results": {"fid2993_full": 5.895203356069715}, "metric": "fid2993_full", "total_time": 118.79897546768188, "total_time_str": "1m 59s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000080.pkl", "timestamp": 1714032757.8731043}
+tick 21    kimg 84.0     time 4h 10m 50s   sec/tick 693.1   sec/kimg 173.28  maintenance 143.2  cpumem 8.28   gpumem 32.54  augment 0.000
+tick 22    kimg 88.0     time 4h 22m 23s   sec/tick 692.8   sec/kimg 173.20  maintenance 0.2    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 23    kimg 92.0     time 4h 33m 55s   sec/tick 692.4   sec/kimg 173.10  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 24    kimg 96.0     time 4h 45m 28s   sec/tick 692.9   sec/kimg 173.23  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 25    kimg 100.0    time 4h 57m 02s   sec/tick 693.1   sec/kimg 173.28  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 26    kimg 104.0    time 5h 08m 35s   sec/tick 692.9   sec/kimg 173.23  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 27    kimg 108.0    time 5h 20m 08s   sec/tick 692.9   sec/kimg 173.24  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 28    kimg 112.0    time 5h 31m 40s   sec/tick 692.5   sec/kimg 173.13  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 29    kimg 116.0    time 5h 43m 13s   sec/tick 692.5   sec/kimg 173.13  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+tick 30    kimg 120.0    time 5h 54m 46s   sec/tick 692.6   sec/kimg 173.16  maintenance 0.1    cpumem 8.28   gpumem 32.54  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+check-sum Data 569.202191357265 9203.217768999863
+check-sum Data 569.202191357265 9203.217768999863
+check-sum G 567.297283769419 8851.003045031823
+SVM fitting ...
+check-sum G 567.297283769419 8851.003045031823
+uids 0.16622118275977282
+pids 0.06247911794186435
+{"results": {"fid2993_full": 6.104032091048886}, "metric": "fid2993_full", "total_time": 116.89609026908875, "total_time_str": "1m 57s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000120.pkl", "timestamp": 1714039828.3113232}
+tick 31    kimg 124.0    time 6h 08m 40s   sec/tick 692.9   sec/kimg 173.23  maintenance 141.4  cpumem 8.31   gpumem 32.54  augment 0.000
+tick 32    kimg 128.0    time 6h 20m 13s   sec/tick 693.0   sec/kimg 173.24  maintenance 0.2    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 33    kimg 132.0    time 6h 31m 46s   sec/tick 692.7   sec/kimg 173.17  maintenance 0.1    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 34    kimg 136.0    time 6h 43m 19s   sec/tick 692.8   sec/kimg 173.19  maintenance 0.3    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 35    kimg 140.0    time 6h 54m 52s   sec/tick 692.8   sec/kimg 173.19  maintenance 0.2    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 36    kimg 144.0    time 7h 06m 25s   sec/tick 693.0   sec/kimg 173.25  maintenance 0.2    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 37    kimg 148.0    time 7h 17m 58s   sec/tick 692.5   sec/kimg 173.12  maintenance 0.2    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 38    kimg 152.0    time 7h 29m 31s   sec/tick 692.7   sec/kimg 173.17  maintenance 0.1    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 39    kimg 156.0    time 7h 41m 04s   sec/tick 692.8   sec/kimg 173.19  maintenance 0.1    cpumem 8.31   gpumem 32.54  augment 0.000
+tick 40    kimg 160.0    time 7h 52m 37s   sec/tick 693.0   sec/kimg 173.24  maintenance 0.1    cpumem 8.31   gpumem 32.54  augment 0.000
+Evaluating metrics...
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+TAKE /home/nnthao/.cache/dnnlib/gan-metrics/CelebA-HQ-val_img-inception-2015-12-05-e1e2b600fc3b553d7c7101a9156e6364.pkl
+check-sum Data 569.202191357265 9203.217768999863
+check-sum Data 569.202191357265 9203.217768999863
+check-sum G 568.4188965980745 8857.22280191611
+SVM fitting ...
+check-sum G 568.4188965980745 8857.22280191611
+uids 0.1727363848980955
+pids 0.07484129635816907
+{"results": {"fid2993_full": 5.8115716726084425}, "metric": "fid2993_full", "total_time": 118.14728355407715, "total_time_str": "1m 58s", "num_gpus": 2, "snapshot_pkl": "network-snapshot-000160.pkl", "timestamp": 1714046900.4893563}
+tick 41    kimg 164.0    time 8h 06m 32s   sec/tick 692.6   sec/kimg 173.15  maintenance 142.8  cpumem 8.35   gpumem 32.54  augment 0.000
+tick 42    kimg 168.0    time 8h 18m 05s   sec/tick 692.4   sec/kimg 173.10  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000
+tick 43    kimg 172.0    time 8h 29m 38s   sec/tick 692.9   sec/kimg 173.21  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000
+tick 44    kimg 176.0    time 8h 41m 11s   sec/tick 693.0   sec/kimg 173.26  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000
+tick 45    kimg 180.0    time 8h 52m 43s   sec/tick 692.5   sec/kimg 173.12  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000
+tick 46    kimg 184.0    time 9h 04m 16s   sec/tick 692.5   sec/kimg 173.13  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000
+tick 47    kimg 188.0    time 9h 15m 49s   sec/tick 693.1   sec/kimg 173.28  maintenance 0.1    cpumem 8.35   gpumem 32.54  augment 0.000

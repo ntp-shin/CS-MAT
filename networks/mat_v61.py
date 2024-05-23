@@ -414,7 +414,7 @@ class LePEAttention(nn.Module):
         self.W_sp = W_sp
         stride = 1
         self.get_v = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1,groups=dim)
-
+        self.softmax = nn.Softmax(dim=-1)
         self.attn_drop = nn.Dropout(attn_drop)
     
     def to_cswin(self, x, is_mask=False):
@@ -479,7 +479,7 @@ class LePEAttention(nn.Module):
         # else:
         #     attn_mask_stripes = None
         
-        attn = nn.functional.softmax(attn, dim=-1, dtype=attn.dtype)
+        attn = self.softmax(attn)
         attn = self.attn_drop(attn)
 
         x = (attn @ v) + lepe   # B' head N N @ B' head N C
@@ -509,10 +509,11 @@ class FullSelfAttention(nn.Module):
         self.patches_resolution = reso
         self.scale = qk_scale or (dim // num_heads) ** -0.5
         
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.q = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
+        self.k = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
+        self.v = FullyConnectedLayer(in_features=dim, out_features=dim, bias=qkv_bias)
+        self.softmax = nn.Softmax(dim=-1)
+        self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
     
     def forward(self, x, mask=None):
         """
@@ -523,24 +524,19 @@ class FullSelfAttention(nn.Module):
         B, L, C = x.shape
         assert L == H * W, "flatten img_tokens has wrong size"
 
-        qkv = self.qkv(x).reshape(B, -1, 3, C).permute(2, 0, 1, 3)
-        q = qkv[0].view(B, L, self.num_heads, C // self.num_heads).transpose(1, 2).contiguous()
-        k = qkv[1].view(B, L, self.num_heads, C // self.num_heads).transpose(1, 2).contiguous()
-        v = qkv[2].view(B, L, self.num_heads, C // self.num_heads).transpose(1, 2).contiguous()
+        q = self.q(x).reshape(B, L, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        k = self.k(x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 3, 1)
+        v = self.v(x).view(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
 
-        q = q * self.scale
-        attn = (q @ k.transpose(-2, -1))  # B head L C @ B head C L --> B head L L
+        attn = (q @ k) * self.scale
 
         if mask is not None:
             attn_mask = mask.view(B, 1, L, 1)
             attn = attn + attn_mask.masked_fill(attn_mask == 0, float(-100.0)).masked_fill(attn_mask == 1, float(0.0)).transpose(-2, -1)
         
-        attn = nn.functional.softmax(attn, dim=-1, dtype=attn.dtype)
-        attn = self.attn_drop(attn)
-        x = (attn @ v)  # B head L L @ B head L C
-
-        x = x.transpose(1, 2).reshape(B, L, C)
-        x = self.drop_path(self.proj(x))
+        attn = self.softmax(attn)
+        x = (attn @ v).transpose(1, 2).reshape(B, L, C)
+        x = self.proj(x)
 
         return x
 
@@ -558,7 +554,7 @@ class CSWinBlock(nn.Module):
         self.patches_resolution = reso
         self.split_size = split_size
         self.mlp_ratio = mlp_ratio
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.qkv = FullyConnectedLayer(in_features=dim, out_features=3*dim, bias=qkv_bias)
         self.fsa_norm0 = norm_layer(dim)
         self.norm0 = norm_layer(dim, eps=1e-4)
 
@@ -568,7 +564,7 @@ class CSWinBlock(nn.Module):
             self.branch_num = 1
         else:
             self.branch_num = 2
-        self.proj = nn.Linear(dim, dim)
+        self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
         self.proj_drop = nn.Dropout(drop)
 
         self.full_attn = FullSelfAttention(dim, reso=self.patches_resolution,

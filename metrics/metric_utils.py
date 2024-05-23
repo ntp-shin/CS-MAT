@@ -186,6 +186,7 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
 
     # Try to lookup from cache.
     cache_file = None
+    # opts.cache = False
     if opts.cache:
         # Choose cache file name.
         args = dict(dataset_kwargs=opts.dataset_kwargs, detector_url=detector_url, detector_kwargs=detector_kwargs, stats_kwargs=stats_kwargs)
@@ -202,9 +203,11 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
 
         # Load.
         if flag:
+            print('TAKE', cache_file)
             return FeatureStats.load(cache_file)
 
     # Initialize.
+    print('CAL AGAIN')
     num_items = len(dataset)
     if max_items is not None:
         num_items = min(num_items, max_items)
@@ -227,6 +230,7 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
 
     # Save to cache.
     if cache_file is not None and opts.rank == 0:
+        os.makedirs(os.path.dirname(os.path.dirname(cache_file)), exist_ok=True)
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
         temp_file = cache_file + '.' + uuid.uuid4().hex
         stats.save(temp_file)

@@ -593,9 +593,11 @@ class CSWinBlock(nn.Module):
 
         mlp_hidden_dim = int(dim * mlp_ratio)
 
-        self.norm1 = norm_layer(dim)
-        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        self.norm2 = norm_layer(dim, eps=1e-4)
+        # self.norm1 = norm_layer(dim)
+        self.fuse1 = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
+        self.mlp1 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)        
+        # self.norm2 = norm_layer(dim, eps=1e-4)
+        self.fuse2 = FullyConnectedLayer(in_features=dim * 3, out_features=dim, activation='lrelu')
         self.mlp2 = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
 
     def update_mask_windows(self, mask=None):
@@ -638,13 +640,18 @@ class CSWinBlock(nn.Module):
         mask = self.update_mask_windows(mask)
 
         attened_x = self.proj(attened_x)
-        x = x + attened_x   # Output of CSWin Self-Attn
+        # x = x + attened_x   # Output of CSWin Self-Attn
+        x = torch.cat([x, attened_x], dim=-1)
+        x = self.fuse1(x)
 
         # LN and MLP 1
-        x = x + self.mlp1(self.norm1(x)) + fsa_x
+        x = torch.cat([x, self.mlp1(x), fsa_x], dim=-1)
+        x = self.fuse2(x)
+        # x = x + self.mlp1(self.norm1(x)) + fsa_x
 
         # LN and MLP 2
-        x = x + self.mlp2(self.norm2(x))
+        # x = x + self.mlp2(self.norm2(x))
+        x = self.mlp2(x)
 
         return x, mask
 
