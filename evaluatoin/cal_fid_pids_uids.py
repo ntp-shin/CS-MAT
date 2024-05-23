@@ -144,7 +144,7 @@ def calculate_metrics(folder1, folder2):
 
     with torch.no_grad():
         for i, (fpath1, fpath2) in enumerate(zip(l1, l2)):
-            print(i)
+            # print(i)
             _, name1 = os.path.split(fpath1)
             _, name2 = os.path.split(fpath2)
             name1 = name1.split('.')[0]

@@ -539,7 +539,8 @@ class CSWinBlock(nn.Module):
 
         mlp_hidden_dim = int(dim * mlp_ratio)
 
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        # self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.fuse = FullyConnectedLayer(in_features=dim * 2, out_features=dim, activation='lrelu')
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
         self.norm2 = norm_layer(dim)
 
@@ -582,8 +583,11 @@ class CSWinBlock(nn.Module):
         # mask = self.update_mask_windows(mask)
 
         attened_x = self.proj(attened_x)
-        x = x + self.drop_path(attened_x)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        # x = x + self.drop_path(attened_x)
+        x = torch.cat([x, attened_x], dim=-1)
+        x = self.fuse(x)
+        # x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = self.mlp(x)
 
         return x, mask
 

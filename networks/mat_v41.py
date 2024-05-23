@@ -414,7 +414,7 @@ class LePEAttention(nn.Module):
         self.W_sp = W_sp
         stride = 1
         self.get_v = nn.Conv2d(dim, dim, kernel_size=3, stride=1, padding=1,groups=dim)
-
+        self.softmax = nn.Softmax(dim=-1)
         self.attn_drop = nn.Dropout(attn_drop)
     
     def to_cswin(self, x, is_mask=False):
@@ -474,27 +474,27 @@ class LePEAttention(nn.Module):
             attn_mask_stripes = self.to_cswin(mask, is_mask=True)
             attn = attn + attn_mask_stripes.masked_fill(attn_mask_stripes == 0, float(-100.0)).masked_fill(attn_mask_stripes == 1, float(0.0)).transpose(-2, -1)
 
-            with torch.no_grad():
-                attn_mask_stripes = (torch.sum(attn_mask_stripes, dim=-2, keepdim=True) / (self.H_sp * self.W_sp) >= 0.1).repeat(1, 1, self.H_sp * self.W_sp, 1).to(mask.dtype)
-        else:
-            attn_mask_stripes = None
+        #     with torch.no_grad():
+        #         attn_mask_stripes = (torch.sum(attn_mask_stripes, dim=-2, keepdim=True) / (self.H_sp * self.W_sp) >= 0.1).repeat(1, 1, self.H_sp * self.W_sp, 1).to(mask.dtype)
+        # else:
+        #     attn_mask_stripes = None
         
-        attn = nn.functional.softmax(attn, dim=-1, dtype=attn.dtype)
+        attn = self.softmax(attn)
         attn = self.attn_drop(attn)
 
         x = (attn @ v) + lepe   # B' head N N @ B' head N C
         x = x.transpose(1, 2).reshape(-1, self.H_sp * self.W_sp, C)
 
-        if attn_mask_stripes is not None:
-            mask = attn_mask_stripes.transpose(1, 2).reshape(-1, self.H_sp * self.W_sp, 1)
+        # if attn_mask_stripes is not None:
+        #     mask = attn_mask_stripes.transpose(1, 2).reshape(-1, self.H_sp * self.W_sp, 1)
         
         ### Window2Img
         x = windows2img(x, self.H_sp, self.W_sp, H, W).view(B, -1, C)  # B H W C
         
-        if mask is not None:
-            mask = windows2img(mask, self.H_sp, self.W_sp, H, W).view(B, -1, 1)  # B H W C
+        # if mask is not None:
+        #     mask = windows2img(mask, self.H_sp, self.W_sp, H, W).view(B, -1, 1)  # B H W C
 
-        return x, mask
+        return x
 
 
 @persistence.persistent_class
@@ -510,8 +510,8 @@ class CSWinBlock(nn.Module):
         self.patches_resolution = reso
         self.split_size = split_size
         self.mlp_ratio = mlp_ratio
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.norm1 = norm_layer(dim)
+        self.qkv = FullyConnectedLayer(in_features=dim, out_features=3*dim, bias=qkv_bias)
+        self.norm1 = norm_layer(dim, eps=1e-4)
 
         if self.patches_resolution == split_size:
             mid_stage = True
@@ -519,7 +519,7 @@ class CSWinBlock(nn.Module):
             self.branch_num = 1
         else:
             self.branch_num = 2
-        self.proj = nn.Linear(dim, dim)
+        self.proj = FullyConnectedLayer(in_features=dim, out_features=dim)
         self.proj_drop = nn.Dropout(drop)
 
         if mid_stage:
@@ -539,23 +539,23 @@ class CSWinBlock(nn.Module):
 
         mlp_hidden_dim = int(dim * mlp_ratio)
 
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        # self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim, act_layer=act_layer, drop=drop)
-        self.norm2 = norm_layer(dim)
+        self.norm2 = norm_layer(dim, eps=1e-4)
 
-    # def update_mask_windows(self, mask=None):
-    #     if mask is not None:
-    #         B, L, _ = mask.shape
-    #         H = W = int(np.sqrt(L))
+    def update_mask_windows(self, mask=None):
+        if mask is not None:
+            B, L, _ = mask.shape
+            H = W = int(np.sqrt(L))
 
-    #         mask_windows = window_partition(mask.view(B, H, W, 1), self.split_size).view(-1, self.split_size * self.split_size, 1)
+            mask_windows = window_partition(mask.view(B, H, W, 1), self.split_size).view(-1, self.split_size * self.split_size, 1)
 
-    #         with torch.no_grad():
-    #             mask_windows = torch.clamp(torch.sum(mask_windows, dim=1, keepdim=True), 0, 1).repeat(1, self.split_size * self.split_size, 1)
+            with torch.no_grad():
+                mask_windows = torch.clamp(torch.sum(mask_windows, dim=1, keepdim=True), 0, 1).repeat(1, self.split_size * self.split_size, 1)
 
-    #         mask = window_reverse(mask_windows.view(-1, self.split_size, self.split_size, 1), self.split_size, H, W).view(B, H * W, 1)
+            mask = window_reverse(mask_windows.view(-1, self.split_size, self.split_size, 1), self.split_size, H, W).view(B, H * W, 1)
 
-    #     return mask
+        return mask
         
     def forward(self, x, mask=None):
         """
@@ -569,21 +569,19 @@ class CSWinBlock(nn.Module):
         qkv = self.qkv(img).reshape(B, -1, 3, C).permute(2, 0, 1, 3)
 
         if self.branch_num == 2:
-            x1, mask1 = self.attns[0](qkv[:,:,:,:C//2], mask)
-            x2, mask2 = self.attns[1](qkv[:,:,:,C//2:], mask)
+            x1= self.attns[0](qkv[:,:,:,:C//2], mask)
+            x2 = self.attns[1](qkv[:,:,:,C//2:], mask)
             
             attened_x = torch.cat([x1,x2], dim=2)
-            if mask1 is not None and mask2 is not None:
-                mask = torch.clamp(mask1 + mask2, 0, 1)
         else:
-            attened_x, mask = self.attns[0](qkv, mask)
+            attened_x = self.attns[0](qkv, mask)
 
         # Updating mask
-        # mask = self.update_mask_windows(mask)
+        mask = self.update_mask_windows(mask)
 
         attened_x = self.proj(attened_x)
-        x = x + self.drop_path(attened_x)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = x + attened_x
+        x = x + self.mlp(self.norm2(x))
 
         return x, mask
 

@@ -1,11 +1,17 @@
+import psutil
+import os
 import contextlib
+import glob
 import time
+import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 import torch
 from torchvision.io import read_image
+import PIL.Image
 
 import dnnlib
 import legacy
@@ -135,8 +141,24 @@ def create_training_masks(path='/media/nnthao/MAT/training_masks/', n=30000):
         mask = mask_generator_512.RandomMask(512).transpose(1, 2, 0)
         plt.imsave(path + str(i) + '.png', np.concatenate((mask, mask, mask), axis=2))
 
+def print_modules_stats(model):
+    tran, full_attn, cswin_attn, lepe, fuse, mlp = 0, 0, 0, 0, 0, 0
+    for n, p in model.named_parameters():
+        if '.tran' in n:
+            tran += p.numel()
+        if '.full_attn' in n:
+            full_attn += p.numel()
+        if '.blocks' in n and ('.qkv' in n or '.proj' in n) and 'full_attn' not in n:
+            cswin_attn += p.numel()
+        if  '.blocks' in n and '.attns' in n:
+            lepe += p.numel()
+        if '.fuse' in n:
+            fuse += p.numel()
+        if '.mlp' in n:
+            mlp += p.numel()
+    print(f'Params stat:\n- tran\t{tran}\n- full_attn\t{full_attn}\n- cswin_attn\t{cswin_attn}\n- lepe\t{lepe}\n- fuse\t{fuse}\n- mlp\t{mlp}')
 
-def build_model(res=512, c=0, img_channels=3, batch=2, device=torch.device('cuda:0')):
+def build_model(res=512, c=0, img_channels=3, batch=1, device=torch.device('cuda:0')):
     initG_start_time = time.time()
     G = mat.Generator(z_dim=res, c_dim=c, w_dim=res, img_resolution=res, img_channels=img_channels).to(device)
     initG_time = time.time() - initG_start_time
@@ -147,17 +169,24 @@ def build_model(res=512, c=0, img_channels=3, batch=2, device=torch.device('cuda
 
     D = mat.Discriminator(c_dim=0, img_resolution=res, img_channels=img_channels).to(device)
 
-    img = torch.randn(batch, 3, res, res).to(device)
-    mask = torch.randn(batch, 1, res, res).to(device)
+    img = torch.from_numpy(np.array(PIL.Image.open('/home/nnthao/lntuong/FDA/test_sets/CelebA-HQ/images/test2.png'))).permute(2, 0, 1)[None].to(device) / 127.5 - 1
+    # mask = torch.from_numpy(np.array(PIL.Image.open('/media/nnthao/MAT/saved_model/model_feature_snapshots/mask_in.png')))[None][None].to(device) / 255
+    mask = torch.from_numpy(mask_generator_512.RandomMask(res, hole_range=[.4, 6.])[None]).to(device)
+    batch = 1
+
+    # img = torch.randn(batch, 3, res, res).to(device)
+    # mask = torch.randn(batch, 1, res, res).to(device)
     z_dim = torch.randn(batch, res).to(device)
     c_dim = torch.randn(batch, c).to(device)
 
-    misc.print_module_summary(G, [img, mask, z_dim, c_dim])
+    # misc.print_module_summary(G, [img, mask, z_dim, c_dim])
     print()
-    print_model_tensors_stats(G, 'Generator', False, 1)
+    print_model_tensors_stats(G, 'Generator', True, 1)
     print()
     print_model_tensors_stats(D, 'Discriminator', False, 1)
     print()
+
+    print_modules_stats(G)
 
     genG_start_time = time.time()
     with torch.no_grad():
@@ -176,7 +205,16 @@ def build_model(res=512, c=0, img_channels=3, batch=2, device=torch.device('cuda
 def fid_evaluating(network_pkl, res=512, max_size=2993, use_labels=False, xflip=False,
                    data_val='/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_img',
                    data_loader='datasets.dataset_512.ImageFolderMaskDataset',
-                   metrics=['fid2993_full'], device=torch.device('cuda:0'), num_gpus=1, rank=0):
+                   metrics=['fid2993_full'], device=torch.device('cuda:0'), num_gpus=1, rank=0, random_seed=None):
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
+
+    if random_seed is not None:
+        random.seed(random_seed)
+        np.random.seed(random_seed * num_gpus + rank)
+        torch.manual_seed(random_seed * num_gpus + rank)
+        torch.cuda.manual_seed(random_seed * num_gpus + rank)
+
     val_set_kwargs = dnnlib.EasyDict(class_name=data_loader, path=data_val, use_labels=use_labels, max_size=max_size, xflip=xflip, resolution=res)
 
     print(f'Loading networks from: {network_pkl}')
