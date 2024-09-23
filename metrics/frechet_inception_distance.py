@@ -22,16 +22,17 @@ def compute_fid(opts, max_real, num_gen):
     detector_url = 'https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/metrics/inception-2015-12-05.pt'
     detector_kwargs = dict(return_features=True) # Return raw features before the softmax layer.
 
+    # See more details
     data_stat = metric_utils.compute_feature_stats_for_dataset(
         opts=opts, detector_url=detector_url, detector_kwargs=detector_kwargs,
         rel_lo=0, rel_hi=0, capture_all=True, capture_mean_cov=True, max_items=max_real)
     mu_real, sigma_real = data_stat.get_mean_cov()
-    print('check-sum Data', mu_real.sum(), sigma_real.sum())
+    # print('check-sum Data', mu_real.sum(), sigma_real.sum())
     gen_stat = metric_utils.compute_feature_stats_for_generator(
         opts=opts, detector_url=detector_url, detector_kwargs=detector_kwargs,
         rel_lo=0, rel_hi=1, capture_all=True, capture_mean_cov=True, max_items=num_gen)
     mu_gen, sigma_gen = gen_stat.get_mean_cov()
-    print('check-sum G', mu_gen.sum(), sigma_gen.sum())
+    # print('check-sum G', mu_gen.sum(), sigma_gen.sum())
     if opts.rank != 0:
         return float('nan')
 

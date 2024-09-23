@@ -40,7 +40,9 @@ def setup_training_loop_kwargs(
 
     # Dataset.
     data       = None, # Training dataset (required): <path>
+    edge       = None, # Training edge (required): <path>
     data_val   = None, # Validation dataset: <path>, default = None. If none, data_val = data
+    edge_val   = None, # Validation edge: <path>, default = None. If none, edge_val = data
     dataloader = None, # Dataloader, string
     cond       = None, # Train conditional model based on dataset labels: <bool>, default = False
     subset     = None, # Train with only N images: <int>, default = all
@@ -120,14 +122,20 @@ def setup_training_loop_kwargs(
 
     assert data is not None
     assert isinstance(data, str)
+    assert edge is not None
+    assert isinstance(edge, str)
     if data_val is None:
         data_val = data
+    if edge_val is None:
+        edge_val = edge
     if dataloader is None:
         dataloader = 'datasets.dataset_512.ImageFolderMaskDataset'
 
-    args.training_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data,
+    args.training_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data, edge_path=edge,
+                                            #    edge_path='/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-edge/',
                                                use_labels=True, max_size=None, xflip=False)
-    args.val_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data_val,
+    args.val_set_kwargs = dnnlib.EasyDict(class_name=dataloader, path=data_val, edge_path=edge_val,
+                                        #   edge_path='/media/nnthao/MAT/Data/CelebA-HQ/CelebA-HQ-val_edge/',
                                           use_labels=True, max_size=None, xflip=False)
     args.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, num_workers=3, prefetch_factor=2)
 
@@ -496,7 +504,9 @@ class CommaSeparatedList(click.ParamType):
 
 # Dataset.
 @click.option('--data', help='Training data (directory or zip)', metavar='PATH', required=True)
+@click.option('--edge', help='Training edge data (directory or zip)', metavar='PATH', required=True)
 @click.option('--data_val', help='Validation data (directory or zip)', metavar='PATH')
+@click.option('--edge_val', help='Validation edge data (directory or zip)', metavar='PATH')
 @click.option('--dataloader', help='dataloader', type=str, metavar='STRING')
 @click.option('--cond', help='Train conditional model based on dataset labels [default: false]', type=bool, metavar='BOOL')
 @click.option('--subset', help='Train with only N images [default: all]', type=int, metavar='INT')

@@ -81,6 +81,24 @@ def report_metric(result_dict, run_dir=None, snapshot_pkl=None):
 #----------------------------------------------------------------------------
 # Primary metrics.
 
+# @register_metric
+# def fid600_full(opts):
+#     opts.dataset_kwargs.update(max_size=None, xflip=False)
+#     fid = frechet_inception_distance.compute_fid(opts, max_real=600, num_gen=600)
+#     return dict(fid600_full=fid)
+
+# @register_metric
+# def fid700_full(opts):
+#     opts.dataset_kwargs.update(max_size=None, xflip=False)
+#     fid = frechet_inception_distance.compute_fid(opts, max_real=700, num_gen=700)
+#     return dict(fid700_full=fid)
+
+# @register_metric
+# def fid1800_full(opts):
+#     opts.dataset_kwargs.update(max_size=None, xflip=False)
+#     fid = frechet_inception_distance.compute_fid(opts, max_real=1800, num_gen=1800)
+#     return dict(fid1800_full=fid)
+
 @register_metric
 def fid2993_full(opts):
     opts.dataset_kwargs.update(max_size=None, xflip=False)

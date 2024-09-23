@@ -1,4 +1,26 @@
-# FDA: Face Detect Attention
+# CS-MAT (Cross-Shaped Window Mask-Aware Transformer)
+
+#### Tan-Phat Nguyen, Ngoc-Tuong Le, and Ngoc-Thao Nguyen
+
+## App Demo
+
+You can run the app demo at this [repo](https://github.com/ntp-shin/Inpainting).
+
+---
+
+## Visualization
+
+We present a transformer-based model (CS-MAT) for large hole inpainting with high fidelity and diversity.
+
+![large hole inpainting with pluralistic generation](./figures/pluralistic.png)
+
+![compare with SOTA 1](./figures/exp1.png)
+
+![compare with SOTA 2](./figures/exp2.png)
+
+Compared to other methods, the proposed CS-MAT restores more photo-realistic images with fewer artifacts.
+
+---
 
 ## Usage
 
@@ -6,12 +28,12 @@ It is highly recommanded to adopt Conda/MiniConda to manage the environment to a
 
 1. Clone the repository.
     ```shell
-    git clone https://github.com/ntp-shin/FDA.git
+    git clone https://github.com/ntp-shin/CS-MAT.git
     ```
 2. Install the dependencies.
-    - Python 3.7
-    - PyTorch 1.7.1
-    - Cuda 11.0
+    - Python 3.8
+    - PyTorch 1.8.0
+    - Cuda 11.1
     - Other packages
     ```shell
     pip install -r requirements.txt
@@ -19,7 +41,7 @@ It is highly recommanded to adopt Conda/MiniConda to manage the environment to a
 
 ## Quick Test
 
-1. We provide models trained on CelebA-HQ, FFHQ and Places365-Standard at 512x512 resolution. Download models from [One Drive](https://mycuhk-my.sharepoint.com/:f:/g/personal/1155137927_link_cuhk_edu_hk/EuY30ziF-G5BvwziuHNFzDkBVC6KBPRg69kCeHIu-BXORA?e=7OwJyE) and put them into the 'pretrained' directory. The released models are retrained, and hence the visualization results may slightly differ from the paper.
+1. We provide models trained on CelebA-HQ at 512x512 and 256x256 resolution. Download models from [Google Drive](https://drive.google.com/drive/folders/16DTXRpgRlI0PIavRJSVyQCyTQGheWrm0?usp=drive_link).
 
 2. Obtain inpainted results by running
     ```shell
@@ -38,22 +60,24 @@ It is highly recommanded to adopt Conda/MiniConda to manage the environment to a
 
 ## Train
 
-For example, if you want to train a model on Places, run a bash script with
+For example, if you want to train a model on CelebA-HQ 512, run a bash script with
 ```shell
 python train.py \
     --outdir=output_path \
-    --gpus=8 \
-    --batch=32 \
-    --metrics=fid36k5_full \
+    --gpus=2 \
+    --batch=8 \
+    --metrics=fid2993_full \
     --data=training_data_path \
+    --edge=training_edge_path \
     --data_val=val_data_path \
+    --edge_val=val_edge_path \
     --dataloader=datasets.dataset_512.ImageFolderMaskDataset \
     --mirror=True \
     --cond=False \
-    --cfg=places512 \
+    --cfg=celeba512 \
     --aug=noaug \
-    --generator=networks.mat.Generator \
-    --discriminator=networks.mat.Discriminator \
+    --generator=networks.csmat.Generator \
+    --discriminator=networks.csmat.Discriminator \
     --loss=losses.loss.TwoStageLoss \
     --pr=0.1 \
     --pl=False \
@@ -69,7 +93,9 @@ Description of arguments:
 - batch: number of images in all gpus
 - metrics: find more metrics in 'metrics/metric\_main.py'
 - data: training data
+- edge: training edge data
 - data\_val: validation data
+- edge\_val: validation edge data
 - dataloader: you can define your own dataloader
 - mirror: use flip augmentation or not 
 - cond: use class info, default: false
@@ -89,14 +115,11 @@ Description of arguments:
 
 We provide evaluation scrtips for FID/U-IDS/P-IDS/LPIPS/PSNR/SSIM/L1 metrics in the 'evaluation' directory. Only need to give paths of your results and GTs.
 
-We also provide our masks for CelebA-HQ-val and Places-val [here](https://mycuhk-my.sharepoint.com/:f:/g/personal/1155137927_link_cuhk_edu_hk/EuY30ziF-G5BvwziuHNFzDkBVC6KBPRg69kCeHIu-BXORA?e=7OwJyE).
+We also provide our masks for CelebA-HQ-test [here](https://drive.google.com/drive/folders/16zztPEyOUCMOSVcyq4oCOpPeKD67gDRb?usp=drive_link).
 
 
 ## Citation
 
-    @inproceedings{li2022mat,
-        title={MAT: Mask-Aware Transformer for Large Hole Image Inpainting},
-        author={Li, Wenbo and Lin, Zhe and Zhou, Kun and Qi, Lu and Wang, Yi and Jia, Jiaya},
-        booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-        year={2022}
-    }
+## License and Acknowledgement
+
+The code and models in this repo are for research purposes only. Our code is bulit upon [MAT](https://github.com/fenglinglwb/MAT).

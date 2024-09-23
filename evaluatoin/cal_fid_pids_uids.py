@@ -159,7 +159,7 @@ def calculate_metrics(folder1, folder2):
             # Case: img with 4 channels
             if img2.shape == (1, 4, 512, 512):
                 img2 = img2[:, :-1, ...]
-                
+
             assert img1.shape == img2.shape, 'Illegal shape'
             fea1 = detector(img1, **detector_kwargs)
             stat1.append_torch(fea1, num_gpus=1, rank=0)
@@ -170,9 +170,9 @@ def calculate_metrics(folder1, folder2):
 
     # calculate fid
     mu1, sigma1 = stat1.get_mean_cov()
-    print('check-sum G', mu1.sum(), sigma1.sum())
+    # print('check-sum G', mu1.sum(), sigma1.sum())
     mu2, sigma2 = stat2.get_mean_cov()
-    print('check-sum Data', mu2.sum(), sigma2.sum())
+    # print('check-sum Data', mu2.sum(), sigma2.sum())
     m = np.square(mu1 - mu2).sum()
     s, _ = scipy.linalg.sqrtm(np.dot(sigma1, sigma2), disp=False) # pylint: disable=no-member
     fid = np.real(m + np.trace(sigma1 + sigma2 - s * 2))

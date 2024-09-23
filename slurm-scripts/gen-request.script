@@ -1,0 +1,11 @@
+#!/bin/sh
+#SBATCH -w gpu01 --gpus=1 --cpus-per-gpu=16 --mem-per-gpu=10GB -J Generating_CS-MAT --time=15:00
+#SBATCH -o /media/nnthao/CS-MAT/std/gen-out -e /media/nnthao/CS-MAT/std/gen-err
+
+cd /media/nnthao/CS-MAT
+
+srun python generate_image_having_stg1.py \
+    --network /media/nnthao/CS-MAT/saved_model/csmat.pkl \
+    --dpath /media/nnthao/CS-MAT/Data/CelebA-HQ/CelebA-HQ-test_img \
+    --mpath /media/nnthao/CS-MAT/Data/CelebA-HQ/masks_celebahq_test_512 \
+    --outdir /media/nnthao/CS-MAT/Data/CelebA-HQ/test_samples

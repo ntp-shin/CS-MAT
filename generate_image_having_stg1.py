@@ -25,7 +25,7 @@ import torch.nn.functional as F
 import legacy
 # from datasets.mask_generator_512 import RandomMask
 from datasets import mask_generator_512, mask_generator_512_small
-from networks.mat import Generator
+from networks.csmat import Generator
 
 
 def num_range(s: str) -> List[int]:
@@ -58,6 +58,7 @@ def named_params_and_buffers(module):
     assert isinstance(module, torch.nn.Module)
     return list(module.named_parameters()) + list(module.named_buffers())
 
+import matplotlib.image as mpimg
 import time
 @click.command()
 @click.pass_context
@@ -93,22 +94,15 @@ def generate_images(
     """
     Generate images using pretrained network pickle.
     """
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.benchmark = False
-    
     sum_t = time.time()
     read_st, mread_st, gen_st, mgen_st, write_st, write1_st, mwrite_st = 0, 0, 0, 0, 0, 0, 0
     
-    # seed = 240  # pick up a random number
-    # random.seed(seed)
-    # np.random.seed(seed)
-    # torch.manual_seed(seed)
-    # torch.cuda.manual_seed(seed)
-    
     # seed for randoms
     if seed != None:
+    #     torch.use_deterministic_algorithms(True)
+    #     torch.backends.cudnn.benchmark = False
+
         seed = int(seed)
-        # seed = 240  # pick up a random number
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -135,6 +129,7 @@ def generate_images(
         G_saved = _model['G_ema'].to(device).eval().requires_grad_(False) # type: ignore
         _D = _model['D'].to(device)
     net_res = 512 if resolution > 512 else resolution
+    # G = Generator(z_dim=512, c_dim=0, w_dim=512, img_resolution=net_res, img_channels=3, synthesis_kwargs={'channel_base': 16384}, mapping_kwargs={'num_layers': 2}).to(device).eval().requires_grad_(False)
     G = Generator(z_dim=512, c_dim=0, w_dim=512, img_resolution=net_res, img_channels=3).to(device).eval().requires_grad_(False)
     copy_params_and_buffers(G_saved, G, require_all=True)
 
@@ -156,6 +151,21 @@ def generate_images(
         if image.ndim == 2:
             image = image[:, :, np.newaxis] # HW => HWC
             image = np.repeat(image, 3, axis=2)
+
+        # restricted to 512x512
+        res = 512
+        H, W, C = image.shape
+        if H < res or W < res:
+            top = 0
+            bottom = max(0, res - H)
+            left = 0
+            right = max(0, res - W)
+            image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_REFLECT)
+        H, W, C = image.shape
+        h = random.randint(0, H - res)
+        w = random.randint(0, W - res)
+        image = image[h:h+res, w:w+res, :]
+
         image = image.transpose(2, 0, 1) # HWC => CHW
         image = image[:3]
         return image
@@ -203,7 +213,6 @@ def generate_images(
 
                 # Save mask
                 if maskdir != None:
-                    import matplotlib.image as mpimg
                     mwrite_t = time.time()
                     mpimg.imsave(f'{maskdir}/{iname}', mask[0], cmap='gray')
                     mwrite_st += time.time() - mwrite_t
