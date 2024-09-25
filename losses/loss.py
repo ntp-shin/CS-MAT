@@ -62,7 +62,7 @@ class TwoStageLoss(Loss):
             logits, logits_stg1 = self.D(img, mask, img_stg1, c)
         return logits, logits_stg1
 
-    def accumulate_gradients(self, phase, real_img, mask, real_c, gen_z, gen_c, sync, gain):
+    def accumulate_gradients(self, phase, real_img, edge, mask, real_c, gen_z, gen_c, sync, gain):
         assert phase in ['Gmain', 'Greg', 'Gboth', 'Dmain', 'Dreg', 'Dboth']
         do_Gmain = (phase in ['Gmain', 'Gboth'])
         do_Dmain = (phase in ['Dmain', 'Dboth'])
@@ -73,6 +73,8 @@ class TwoStageLoss(Loss):
         if do_Gmain:
             with torch.autograd.profiler.record_function('Gmain_forward'):
                 gen_img, _gen_ws, gen_img_stg1 = self.run_G(real_img, mask, gen_z, gen_c, sync=(sync and not do_Gpl)) # May get synced by Gpl.
+                edge_loss = torch.nn.functional.mse_loss(real_img, gen_img, reduction='none')
+                edge_loss = edge_loss * (1 - edge) + edge_loss * edge * 10
                 gen_logits, gen_logits_stg1 = self.run_D(gen_img, mask, gen_img_stg1, gen_c, sync=False)
                 training_stats.report('Loss/scores/fake', gen_logits)
                 training_stats.report('Loss/signs/fake', gen_logits.sign())
@@ -87,8 +89,10 @@ class TwoStageLoss(Loss):
                 training_stats.report('Loss/G/l1_loss', l1_loss)
                 pcp_loss, _ = self.pcp(gen_img, real_img)
                 training_stats.report('Loss/G/pcp_loss', pcp_loss)
+                edge_loss = torch.mean(edge_loss, (1, 2, 3))
+                training_stats.report('Loss/G/edge_loss', edge_loss)
             with torch.autograd.profiler.record_function('Gmain_backward'):
-                loss_Gmain_all = loss_Gmain + loss_Gmain_stg1 + pcp_loss * self.pcp_ratio
+                loss_Gmain_all = loss_Gmain + loss_Gmain_stg1 + pcp_loss * self.pcp_ratio + edge_loss
                 loss_Gmain_all.mean().mul(gain).backward()
 
         # # Gpl: Apply path length regularization.

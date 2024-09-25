@@ -29,6 +29,7 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(self,
         name,                   # Name of the dataset.
         raw_shape,              # Shape of the raw image data (NCHW).
+        edge_channels,
         max_size    = None,     # Artificially limit the size of the dataset. None = no limit. Applied before xflip.
         use_labels  = False,    # Enable conditioning labels? False = label dimension is zero.
         xflip       = False,    # Artificially double the size of the dataset via x-flips. Applied after max_size.
@@ -36,6 +37,7 @@ class Dataset(torch.utils.data.Dataset):
     ):
         self._name = name
         self._raw_shape = list(raw_shape)
+        self._edge_channels = edge_channels
         self._use_labels = use_labels
         self._raw_labels = None
         self._label_shape = None
@@ -69,6 +71,9 @@ class Dataset(torch.utils.data.Dataset):
         pass
 
     def _load_raw_image(self, raw_idx): # to be overridden by subclass
+        raise NotImplementedError
+
+    def _load_raw_edge(self): # to be overridden by subclass
         raise NotImplementedError
 
     def _load_raw_labels(self): # to be overridden by subclass
@@ -120,6 +125,10 @@ class Dataset(torch.utils.data.Dataset):
         return list(self._raw_shape[1:])
 
     @property
+    def edge_shape(self):
+        return [self._edge_channels] + list(self._raw_shape[2:])
+
+    @property
     def num_channels(self):
         assert len(self.image_shape) == 3 # CHW
         return self.image_shape[0]
@@ -160,33 +169,43 @@ class Dataset(torch.utils.data.Dataset):
 class ImageFolderMaskDataset(Dataset):
     def __init__(self,
         path,                   # Path to directory or zip.
+        edge_path,
+        edge_channels   = 1,
         resolution      = None, # Ensure specific resolution, None = highest available.
         hole_range=[0,1],
         **super_kwargs,         # Additional arguments for the Dataset base class.
     ):
         self._path = path
+        self._edge_path = edge_path
         self._zipfile = None
         self._hole_range = hole_range
+        self._allmask_fnames = {os.path.relpath(os.path.join(root, fname), start=self._path) for root, _dirs, files in os.walk('/media/nnthao/MAT/Data/CelebA-HQ/masks_large_celebahq_val_512') for fname in files}
+        self._mask_fnames = sorted(fname for fname in self._allmask_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
 
-        if os.path.isdir(self._path):
+        if os.path.isdir(self._path) or os.path.isdir(self._edge_path):
             self._type = 'dir'
             self._all_fnames = {os.path.relpath(os.path.join(root, fname), start=self._path) for root, _dirs, files in os.walk(self._path) for fname in files}
-        elif self._file_ext(self._path) == '.zip':
+            self._alledge_fnames = {os.path.relpath(os.path.join(root, fname), start=self._edge_path) for root, _dirs, files in os.walk(self._edge_path) for fname in files}
+        elif self._file_ext(self._path) == '.zip' or self._file_ext(self._edge_path) == '.zip':
             self._type = 'zip'
             self._all_fnames = set(self._get_zipfile().namelist())
+            self._alledge_fnames = set(self._get_zipedgefile().namelist())
         else:
             raise IOError('Path must point to a directory or zip')
 
         PIL.Image.init()
         self._image_fnames = sorted(fname for fname in self._all_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
+        self._edge_fnames = sorted(fname for fname in self._alledge_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
         if len(self._image_fnames) == 0:
             raise IOError('No image files found in the specified path')
+        if len(self._edge_fnames) == 0:
+            raise IOError('No edge files found in the specified path')
 
         name = os.path.splitext(os.path.basename(self._path))[0]
         raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0).shape)
         if resolution is not None and (raw_shape[2] != resolution or raw_shape[3] != resolution):
             raise IOError('Image files do not match the specified resolution')
-        super().__init__(name=name, raw_shape=raw_shape, **super_kwargs)
+        super().__init__(name=name, raw_shape=raw_shape, edge_channels=edge_channels, **super_kwargs)
 
     @staticmethod
     def _file_ext(fname):
@@ -196,6 +215,12 @@ class ImageFolderMaskDataset(Dataset):
         assert self._type == 'zip'
         if self._zipfile is None:
             self._zipfile = zipfile.ZipFile(self._path)
+        return self._zipfile
+
+    def _get_zipedgefile(self):
+        assert self._type == 'zip'
+        if self._zipfile is None:
+            self._zipfile = zipfile.ZipFile(self._edge_path)
         return self._zipfile
 
     def _open_file(self, fname):
@@ -215,8 +240,11 @@ class ImageFolderMaskDataset(Dataset):
     def __getstate__(self):
         return dict(super().__getstate__(), _zipfile=None)
 
-    def _load_raw_image(self, raw_idx):
-        fname = self._image_fnames[raw_idx]
+    def _load_raw_image(self, raw_idx, edge=False):
+        if not edge:
+            fname = self._image_fnames[raw_idx]
+        else:
+            fname = os.path.join(self._edge_path, self._edge_fnames[raw_idx])
         with self._open_file(fname) as f:
             if pyspng is not None and self._file_ext(fname) == '.png':
                 image = pyspng.load(f.read())
@@ -226,8 +254,9 @@ class ImageFolderMaskDataset(Dataset):
             image = image[:, :, np.newaxis] # HW => HWC
 
         # for grayscale image
-        if image.shape[2] == 1:
-            image = np.repeat(image, 3, axis=2)
+        if not edge:
+            if image.shape[2] == 1:
+                image = np.repeat(image, 3, axis=2)
 
         # restricted to 512x512
         res = 512
@@ -263,15 +292,22 @@ class ImageFolderMaskDataset(Dataset):
 
     def __getitem__(self, idx):
         image = self._load_raw_image(self._raw_idx[idx])
+        edge = self._load_raw_image(self._raw_idx[idx], edge=True)
 
         assert isinstance(image, np.ndarray)
         assert list(image.shape) == self.image_shape
         assert image.dtype == np.uint8
+        assert isinstance(edge, np.ndarray)
+        assert list(edge.shape) == self.edge_shape
+        assert edge.dtype == np.uint8
         if self._xflip[idx]:
             assert image.ndim == 3 # CHW
+            assert edge.ndim == 3 # CHW
             image = image[:, :, ::-1]
+            edge = edge[:, :, ::-1]
         mask = RandomMask(image.shape[-1], hole_range=self._hole_range)  # hole as 0, reserved as 1
-        return image.copy(), mask, self.get_label(idx)
+        # mask = (np.array(PIL.Image.open('/media/nnthao/MAT/Data/CelebA-HQ/masks_large_celebahq_val_512/' + self._mask_fnames[self._raw_idx[idx]]))/255)[np.newaxis, ...].astype(np.float32)
+        return image.copy(), edge.copy() / 255, mask, self.get_label(idx)
 
 
 if __name__ == '__main__':

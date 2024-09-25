@@ -143,8 +143,10 @@ def calculate_metrics(folder1, folder2):
     stat2 = FeatureStats(capture_all=True, capture_mean_cov=True, max_items=len(l1))
 
     with torch.no_grad():
+        # progress_file = open('./std/progress', 'w')
         for i, (fpath1, fpath2) in enumerate(zip(l1, l2)):
-            print(i)
+            # progress_file.write(str(i) + '\n')
+            # print(i)
             _, name1 = os.path.split(fpath1)
             _, name2 = os.path.split(fpath2)
             name1 = name1.split('.')[0]
@@ -153,15 +155,24 @@ def calculate_metrics(folder1, folder2):
 
             img1 = read_image(fpath1).to(device)
             img2 = read_image(fpath2).to(device)
+
+            # Case: img with 4 channels
+            if img2.shape == (1, 4, 512, 512):
+                img2 = img2[:, :-1, ...]
+
             assert img1.shape == img2.shape, 'Illegal shape'
             fea1 = detector(img1, **detector_kwargs)
             stat1.append_torch(fea1, num_gpus=1, rank=0)
             fea2 = detector(img2, **detector_kwargs)
             stat2.append_torch(fea2, num_gpus=1, rank=0)
 
+    # progress_file.close()
+
     # calculate fid
     mu1, sigma1 = stat1.get_mean_cov()
+    # print('check-sum G', mu1.sum(), sigma1.sum())
     mu2, sigma2 = stat2.get_mean_cov()
+    # print('check-sum Data', mu2.sum(), sigma2.sum())
     m = np.square(mu1 - mu2).sum()
     s, _ = scipy.linalg.sqrtm(np.dot(sigma1, sigma2), disp=False) # pylint: disable=no-member
     fid = np.real(m + np.trace(sigma1 + sigma2 - s * 2))

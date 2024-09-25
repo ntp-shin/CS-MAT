@@ -186,6 +186,7 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
 
     # Try to lookup from cache.
     cache_file = None
+    # opts.cache = False
     if opts.cache:
         # Choose cache file name.
         args = dict(dataset_kwargs=opts.dataset_kwargs, detector_url=detector_url, detector_kwargs=detector_kwargs, stats_kwargs=stats_kwargs)
@@ -202,9 +203,11 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
 
         # Load.
         if flag:
+            # print('TAKE', cache_file)
             return FeatureStats.load(cache_file)
 
     # Initialize.
+    # print('CAL AGAIN')
     num_items = len(dataset)
     if max_items is not None:
         num_items = min(num_items, max_items)
@@ -216,7 +219,7 @@ def compute_feature_stats_for_dataset(opts, detector_url, detector_kwargs, rel_l
     item_subset = [(i * opts.num_gpus + opts.rank) % num_items for i in range((num_items - 1) // opts.num_gpus + 1)]
     # for images, _labels in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset, batch_size=batch_size, **data_loader_kwargs):
     # adaptation to inpainting
-    for images, masks, _labels in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset, batch_size=batch_size,
+    for images, _, masks, _labels in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset, batch_size=batch_size,
                                                        **data_loader_kwargs):
     # --------------------------------
         if images.shape[1] == 1:
@@ -268,7 +271,7 @@ def compute_feature_stats_for_generator(opts, detector_url, detector_kwargs, rel
 
     # Main loop.
     item_subset = [(i * opts.num_gpus + opts.rank) % stats.max_items for i in range((stats.max_items - 1) // opts.num_gpus + 1)]
-    for imgs_batch, masks_batch, labels_batch in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset,
+    for imgs_batch, _, masks_batch, labels_batch in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset,
                                                               batch_size=batch_size,
                                                               **data_loader_kwargs):
         images = []
@@ -315,7 +318,7 @@ def compute_image_stats_for_generator(opts, rel_lo=0, rel_hi=1, batch_size=64, b
 
     # Main loop.
     item_subset = [(i * opts.num_gpus + opts.rank) % stats.max_items for i in range((stats.max_items - 1) // opts.num_gpus + 1)]
-    for imgs_batch, masks_batch, labels_batch in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset,
+    for imgs_batch, _, masks_batch, labels_batch in torch.utils.data.DataLoader(dataset=dataset, sampler=item_subset,
                                                                              batch_size=batch_size,
                                                                              **data_loader_kwargs):
         images = []
