@@ -1,6 +1,9 @@
-# CS-MAT (Cross-Shaped Window Mask-Aware Transformer)
+# CS-MAT: Cross-Shaped Window Mask-Aware Transformer for Large Mask Image Inpainting (2024 17th International Conference on Machine Vision - ICMV 2024)
 
 #### Tan-Phat Nguyen, Ngoc-Tuong Le, and Ngoc-Thao Nguyen
+
+#### [\[Paper\]]()
+
 
 ## App Demo
 
